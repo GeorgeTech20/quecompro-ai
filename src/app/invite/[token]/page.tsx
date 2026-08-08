@@ -124,7 +124,7 @@ function InviteFrame({ children }: { children: React.ReactNode }) {
         href="/"
         className="text-xl font-semibold tracking-tight text-ink focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        QueCompro<span className="text-brand-600">.ai</span>
+        QuéCompro<span className="text-brand-600">.app</span>
       </Link>
 
       <Card padding="md" className="mt-8 w-full max-w-md">
@@ -142,7 +142,7 @@ function InvalidInvite() {
       description="El enlace venció o la casa cerró las invitaciones. Pídele a quien te invitó que te mande uno nuevo desde Roomies."
       action={
         <LinkButton href="/" variant="secondary">
-          Ver qué es QueCompro.ai
+          Ver qué es QuéCompro.app
         </LinkButton>
       }
     />

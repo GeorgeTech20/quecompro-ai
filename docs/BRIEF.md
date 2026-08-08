@@ -1,4 +1,4 @@
-# QueCompro.ai — brief de producto y de diseño
+# QuéCompro.app — brief de producto y de diseño
 
 Documento único de verdad para todo el equipo. Si el código y este brief se
 contradicen, gana el código; si el código no dice nada, gana este brief.

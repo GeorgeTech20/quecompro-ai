@@ -6,7 +6,7 @@ import { Card } from "@/components/ui";
 import { OnboardingProgress } from "./OnboardingProgress";
 
 export const metadata: Metadata = {
-  title: { default: "Empecemos", template: "%s · QueCompro.ai" },
+  title: { default: "Empecemos", template: "%s · QuéCompro.app" },
 };
 
 /**
@@ -20,7 +20,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
         href="/"
         className="text-xl font-semibold tracking-tight text-ink focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        QueCompro<span className="text-brand-600">.ai</span>
+        QuéCompro<span className="text-brand-600">.app</span>
       </Link>
 
       <div className="mt-8 w-full max-w-md">

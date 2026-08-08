@@ -12,7 +12,7 @@ export default function LoginPage() {
   return (
     <main className="bg-canvas flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
       <Link href="/" className="text-ink text-2xl font-semibold tracking-tight">
-        QueCompro<span className="text-brand-600">.ai</span>
+        QuéCompro<span className="text-brand-600">.app</span>
       </Link>
 
       <p className="text-ink-muted max-w-sm text-center text-sm">

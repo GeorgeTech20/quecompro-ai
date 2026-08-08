@@ -165,7 +165,7 @@ function InviteCard({
   }, []);
 
   const link = token && origin ? `${origin}/invite/${token}` : "";
-  const whatsappText = `Oye, entra a nuestra lista de compras de ${householdName} en QueCompro.ai 👉 ${link}`;
+  const whatsappText = `Oye, entra a nuestra lista de compras de ${householdName} en QuéCompro.app 👉 ${link}`;
 
   function openModal() {
     setOpen(true);

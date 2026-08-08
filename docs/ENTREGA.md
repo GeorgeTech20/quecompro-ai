@@ -4,7 +4,7 @@ Checklist de elegibilidad, con estado real. Nada se marca hecho sin verificarlo.
 
 | Requisito | Estado |
 |---|---|
-| Repo público en GitHub | ✅ github.com/GeorgeTech20/quecompro-ai |
+| Repo público en GitHub | ✅ github.com/GeorgeTech20/quecompro-app |
 | Topic `the-realtime-hackathon` | ✅ aplicado al repo |
 | Commits dentro de la ventana (vie 7 ago 19:00 → dom 9 ago 10:00, UTC-5) | ✅ en curso |
 | Producto funcional desplegado | ⏳ Vercel |

@@ -12,13 +12,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "QueCompro.ai — la despensa viva de tu casa",
-    template: "%s · QueCompro.ai",
+    default: "QuéCompro.app — la despensa viva de tu casa",
+    template: "%s · QuéCompro.app",
   },
   description:
     "Carrito de compras compartido en vivo con una IA que puntúa la salud de lo que agregas, busca el precio más barato y cuida el presupuesto del mes.",
   openGraph: {
-    title: "QueCompro.ai — la despensa viva de tu casa",
+    title: "QuéCompro.app — la despensa viva de tu casa",
     description:
       "Tu pareja, tus roomies y una IA de cocina llenan el mercado contigo, en vivo, antes de que gastes de más.",
     type: "website",

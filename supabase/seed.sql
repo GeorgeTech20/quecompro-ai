@@ -1,5 +1,5 @@
 -- ===========================================================================
--- seed.sql — QueCompro.ai
+-- seed.sql — QuéCompro.app
 --
 -- ⚠️ DATOS DE DEMOSTRACIÓN. Los precios son **promedios aproximados de
 -- mercado peruano (Lima, 2026)** puestos a mano para que la demo tenga con qué

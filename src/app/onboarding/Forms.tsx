@@ -119,7 +119,7 @@ export function HouseholdForm({ defaultName }: { defaultName: string }) {
           <Input
             name="code"
             label="Código o enlace de invitación"
-            placeholder="https://quecompro.ai/invite/abc123"
+            placeholder="https://quecompro.app/invite/abc123"
             autoFocus
             required
             hint="Pega el enlace completo, no hace falta recortarlo."

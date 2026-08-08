@@ -1,4 +1,4 @@
-<h1 align="center">QueCompro.ai</h1>
+<h1 align="center">QuéCompro.app</h1>
 
 <p align="center"><strong>La despensa viva de tu casa.</strong></p>
 
@@ -9,7 +9,7 @@ busca el precio más barato y avisa antes de que el mes se te vaya.
 </p>
 
 <p align="center">
-  <a href="https://github.com/GeorgeTech20/quecompro-ai/topics/the-realtime-hackathon"><img alt="The Realtime Hackathon by Portal" src="https://img.shields.io/badge/The%20Realtime%20Hackathon-by%20Portal-059669"></a>
+  <a href="https://github.com/GeorgeTech20/quecompro-app/topics/the-realtime-hackathon"><img alt="The Realtime Hackathon by Portal" src="https://img.shields.io/badge/The%20Realtime%20Hackathon-by%20Portal-059669"></a>
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000">
   <img alt="Portal SDK" src="https://img.shields.io/badge/Portal%20SDK-realtime-10b981">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
@@ -27,7 +27,7 @@ Las apps de lista de compras resuelven la lista. No resuelven que **la compra
 es una decisión de dos o tres personas que casi nunca están en el mismo lugar
 al mismo tiempo**.
 
-## Qué hace QueCompro.ai
+## Qué hace QuéCompro.app
 
 Un carrito que viven varias personas a la vez, y una IA que participa de esa
 conversación en vivo en lugar de esperar a que le pregunten.
@@ -112,8 +112,8 @@ que respeta `prefers-reduced-motion`.
 Necesitas Node 20+ y pnpm 11.
 
 ```bash
-git clone https://github.com/GeorgeTech20/quecompro-ai
-cd quecompro-ai
+git clone https://github.com/GeorgeTech20/quecompro-app
+cd quecompro-app
 pnpm install
 cp .env.example .env.local     # rellena las claves
 pnpm dev

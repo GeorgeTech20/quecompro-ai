@@ -1,5 +1,5 @@
 /**
- * Design system de QueCompro.ai — barrel único.
+ * Design system de QuéCompro.app — barrel único.
  * Import: `import { Button, HealthChip, Money } from "@/components/ui";`
  */
 

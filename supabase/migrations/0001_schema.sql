@@ -1,5 +1,5 @@
 -- ===========================================================================
--- 0001_schema.sql — QueCompro.ai
+-- 0001_schema.sql — QuéCompro.app
 --
 -- Esquema base: casas, perfiles (unidos a Clerk), catálogo de productos,
 -- carrito compartido, historial de gasto, recetas y caché de precios.
