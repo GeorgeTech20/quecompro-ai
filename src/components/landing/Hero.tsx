@@ -1,81 +1,141 @@
-import { Avatar, LiveDot } from "@/components/ui";
+import fs from "node:fs";
+import path from "node:path";
 
 import { CtaLink } from "./CtaLink";
-import { HeroCanvas } from "./HeroCanvas";
+import { HERO_CSS } from "./hero/heroCss";
+import { HeroStage } from "./hero/HeroStage";
+import { HERO } from "./hero/scene";
 
-const PEOPLE = ["Sofía Ramos", "Marco Díaz", "Rocío Vega"] as const;
+/* --------------------------------------------------------------------------
+   Hero: infografía de mercado a sangre, celeste de lado a lado.
+
+   El titular manda («¿Qué compro?»), debajo va la escena: el carrito visto en
+   picado, la lista de papel, la boleta y los recortes de comida flotando.
+   Todo lo interactivo vive en `HeroStage` (cliente); acá solo se resuelve en
+   servidor qué carrito hay disponible.
+-------------------------------------------------------------------------- */
+
+/**
+ * Candidatos al carrito, en orden de preferencia. Se resuelve en build/render
+ * con `fs.existsSync` — nunca adivinando en el cliente, que no puede mirar el
+ * disco y solo sabría del fallo cuando ya se vio el hueco.
+ *
+ * `09.png` es un recorte cenital real de carrito con las dos manos en el
+ * manubrio: es exactamente la toma que pide la composición.
+ */
+const CART_CANDIDATES = ["hero/cart.png", "hero/food/opt/09.png", "hero/food/09.png"] as const;
+
+function resolveCart(): string | null {
+  const publicDir = path.join(process.cwd(), "public");
+  for (const candidate of CART_CANDIDATES) {
+    if (fs.existsSync(path.join(publicDir, candidate))) return `/${candidate}`;
+  }
+  return null;
+}
 
 export function Hero() {
+  const cartSrc = resolveCart();
+
   return (
-    <section className="relative overflow-hidden">
-      {/* Luz de mercado detrás del carrito: suave, nunca protagonista. */}
+    <section
+      className="relative isolate overflow-x-clip"
+      style={{ backgroundColor: HERO.sky, color: HERO.ink }}
+    >
+      {/* Reglas de la escena, no del design system: `globals.css` no se toca. */}
+      <style>{HERO_CSS}</style>
+
+      {/* Luz de góndola: el celeste se abre arriba y se hunde abajo. */}
       <div
         aria-hidden="true"
-        className="from-brand-100/70 dark:from-brand-900/40 pointer-events-none absolute top-[-14rem] right-[-10rem] h-[36rem] w-[36rem] rounded-full bg-radial to-transparent blur-3xl"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(130% 78% at 50% 4%, ${HERO.skyHigh} 0%, ${HERO.sky} 46%, ${HERO.skyDeep} 100%)`,
+        }}
       />
 
-      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pt-14 pb-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pt-20 lg:pb-28">
-        <div className="max-w-xl">
-          <p className="border-border-subtle bg-surface text-ink-muted mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs">
-            <span aria-hidden="true" className="bg-lime-accent h-1.5 w-1.5 rounded-full" />
+      <div className="relative mx-auto w-full max-w-[1180px] px-4 pt-6 pb-6 sm:px-6 lg:pt-8">
+        <div className="qc-in text-center">
+          <p
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium tracking-wide sm:text-xs"
+            style={{ backgroundColor: HERO.cream, color: HERO.ink }}
+          >
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: HERO.red }}
+            />
             Proyecto de hackathon · hecho en Lima
           </p>
 
-          <h1 className="text-ink text-5xl leading-[1.03] font-semibold tracking-[-0.03em] text-balance md:text-7xl">
-            La despensa <span className="text-brand-600">viva</span> de tu casa.
+          {/* Una sola línea, ancho completo: el titular tiene que leerse de un
+              golpe y dominar la pantalla. El mínimo del clamp está calculado
+              para que quepa a 320 px sin desbordar. */}
+          <h1
+            className="mt-3 font-black whitespace-nowrap"
+            style={{
+              color: HERO.red,
+              fontSize: "clamp(2.35rem, 8.6vw, 9.5rem)",
+              lineHeight: 0.88,
+              letterSpacing: "-0.05em",
+            }}
+          >
+            ¿Qué compro?
           </h1>
 
-          <p className="text-ink-muted mt-6 max-w-lg text-base leading-relaxed sm:text-lg">
-            Un carrito de mercado compartido en tiempo real con tu pareja o tus
-            roomies. La IA está en el mismo canal: puntúa lo que agregas, te dice
-            dónde está más barato y avisa antes de que el mes se te vaya.
+          <p
+            className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-balance sm:text-lg"
+            style={{ color: HERO.ink }}
+          >
+            <span className="font-semibold">La despensa viva de tu casa.</span> El
+            carrito compartido con tu pareja o tus roomies, y una IA en el mismo
+            canal.
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <CtaLink href="/login" size="lg">
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <CtaLink
+              href="/login"
+              size="lg"
+              className="qc-cta"
+              style={{ backgroundColor: HERO.ink, color: "#fff" }}
+            >
               Empezar gratis
             </CtaLink>
-            <CtaLink href="#como-funciona" size="lg" variant="secondary">
+            <CtaLink
+              href="#como-funciona"
+              size="lg"
+              variant="secondary"
+              className="qc-cta"
+              style={{
+                backgroundColor: HERO.cream,
+                color: HERO.ink,
+                borderColor: HERO.creamEdge,
+              }}
+            >
               Ver cómo funciona
             </CtaLink>
           </div>
-
-          {/* Prueba viva: gente mirando el carrito, no cifras inventadas. */}
-          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3">
-            <div className="flex -space-x-2">
-              {PEOPLE.map((name) => (
-                <Avatar
-                  key={name}
-                  name={name}
-                  size="sm"
-                  className="ring-canvas ring-2"
-                />
-              ))}
-            </div>
-            <p className="text-ink-muted flex items-center gap-2 text-sm">
-              <LiveDot label="Conectada ahora" />
-              <span>
-                <span className="text-ink font-medium">Sofi</span> está viendo el
-                carrito
-              </span>
-            </p>
-          </div>
-
-          <p className="text-ink-faint mt-5 text-xs">
-            Sin tarjeta. Los precios que ves son datos de demostración del
-            mercado peruano.
-          </p>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[520px] lg:max-w-none">
-          <div className="border-border-subtle bg-surface-sunken rounded-sheet border p-3 sm:p-5">
-            <HeroCanvas />
-          </div>
-          <p className="text-ink-faint mt-3 text-center text-xs">
-            Cada bloque es un producto. El área es lo que cuesta.
-          </p>
-        </div>
+        <HeroStage cartSrc={cartSrc} />
+
+        <p
+          className="mx-auto mt-6 max-w-xl text-center text-[11px] leading-relaxed"
+          style={{ color: HERO.inkSoft }}
+        >
+          Sin tarjeta. Los precios y la sugerencia de la IA que ves acá son{" "}
+          <strong className="font-semibold">datos de demostración</strong> del mercado
+          peruano, no precios oficiales de ninguna cadena.
+        </p>
       </div>
+
+      {/* Bajada de color hacia la boleta: el celeste no debe cortarse en seco.
+          Va `relative` para pintar por encima del degradado de fondo, que es
+          absoluto y si no se lo comería. */}
+      <div
+        aria-hidden="true"
+        className="relative h-14 w-full sm:h-20"
+        style={{ background: `linear-gradient(${HERO.skyDeep}, ${HERO.paper})` }}
+      />
     </section>
   );
 }
