@@ -40,9 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# entorno local
+# entorno local — todo .env queda fuera salvo la plantilla, que sí se comparte
 .env
 .env*.local
+!.env.example
 
 # supabase
 supabase/.temp
