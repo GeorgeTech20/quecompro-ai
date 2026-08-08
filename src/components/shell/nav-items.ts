@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   CartIcon,
   HomeIcon,
+  LeafIcon,
   ReceiptIcon,
   SettingsIcon,
   SparkIcon,
@@ -41,6 +42,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/app", label: "Resumen", short: "Resumen", icon: HomeIcon },
       { href: "/app/cart", label: "Carrito", short: "Carrito", icon: CartIcon, badge: "cart" },
+      { href: "/app/despensa", label: "Despensa", short: "Despensa", icon: LeafIcon },
       { href: "/app/products", label: "Productos", short: "Productos", icon: BasketIcon },
     ],
   },
