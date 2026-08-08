@@ -22,8 +22,6 @@ const BodySchema = z.object({
   itemId: z.string().optional(),
   /** Texto de búsqueda para el scraper si el productKey no es buen término. */
   query: z.string().max(80).optional(),
-  // TODO(auth): obligatorio y desde Clerk cuando el middleware esté montado.
-  userId: z.string().optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -38,12 +36,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
   }
-  const { householdId, productKey, itemId, query, userId } = parsed.data;
+  const { householdId, productKey, itemId, query } = parsed.data;
 
-  if (userId) {
-    const denied = await membershipGate(userId, householdId);
-    if (denied) return denied;
-  }
+  // Siempre: esta route dispara un proceso externo, así que no puede quedar
+  // abierta a cualquiera que adivine un householdId.
+  const { denied, identity } = await membershipGate(householdId);
+  if (denied) return denied;
+  const userId = identity.profileId;
 
   const anchor = itemId ?? productKey;
 

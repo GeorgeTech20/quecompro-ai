@@ -118,8 +118,12 @@ function renderSpend(spend: MonthSpend, projected: number): string {
     lines.push("Presupuesto mensual: no configurado.");
   }
 
-  if (typeof spend.last7Days === "number") {
-    lines.push(`Últimos 7 días: ${money(spend.last7Days)}.`);
+  if (typeof spend.remaining === "number") {
+    lines.push(
+      spend.remaining >= 0
+        ? `Le queda ${money(spend.remaining)} del mes.`
+        : `Ya se pasó ${money(Math.abs(spend.remaining))} del presupuesto.`,
+    );
   }
 
   return lines.join("\n");

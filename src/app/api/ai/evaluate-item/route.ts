@@ -26,8 +26,6 @@ const BodySchema = z.object({
   title: z.string().min(1),
   price: z.number().nonnegative(),
   qty: z.number().int().min(1),
-  // TODO(auth): pasa a ser obligatorio y a salir de Clerk en el servidor.
-  userId: z.string().optional(),
 });
 
 /**
@@ -63,12 +61,12 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
   }
-  const { householdId, itemId, productId, title, price, qty, userId } = parsed.data;
+  const { householdId, itemId, productId, title, price, qty } = parsed.data;
 
-  if (userId) {
-    const denied = await membershipGate(userId, householdId);
-    if (denied) return denied;
-  }
+  // Sin excepciones: la identidad viene de la sesión y la pertenencia se
+  // comprueba siempre. Un veredicto también revela qué hay en el carrito.
+  const { denied } = await membershipGate(householdId);
+  if (denied) return denied;
 
   if (shouldSkip(itemId)) {
     return Response.json({ ok: true, deduped: true });
@@ -87,7 +85,7 @@ export async function POST(request: Request): Promise<Response> {
   // 2) Alternativa más barata.
   let cheaper: { title: string; store: string; price: number; savings: number } | undefined;
   try {
-    const alternative = await findCheaper(productId ?? cartItem?.productId, title, price);
+    const alternative = await findCheaper(productId ?? cartItem?.productId);
     if (alternative && alternative.price < price) {
       cheaper = {
         title: alternative.title,

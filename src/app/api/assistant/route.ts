@@ -7,9 +7,10 @@ import { z } from "zod";
 import { degradedReply, isModelAvailable, openaiClient, openaiModel } from "@/lib/ai/client";
 import { buildAssistantContext, type AssistantContext } from "@/lib/ai/context";
 import {
+  dropCartItem,
   findRecipes,
   insertCartItem,
-  updateCartItemQty,
+  setBudget,
   type ProductRow,
 } from "@/lib/ai/data-contract";
 import { membershipGate } from "@/lib/ai/guard";
@@ -34,10 +35,6 @@ export const runtime = "nodejs";
 const BodySchema = z.object({
   householdId: z.string().min(1),
   message: z.string().min(1).max(1000),
-  // TODO(auth): hoy el userId viene del body. Cuando el middleware de Clerk esté
-  // montado hay que leerlo de `auth()` en el servidor y dejar de confiar en esto;
-  // `membershipGate` cubre la pertenencia, no la identidad.
-  userId: z.string().min(1),
 });
 
 /** Dos rondas: llamar tools → contestar. Más que eso encarece y no mejora. */
@@ -109,8 +106,8 @@ async function runTool(
       const newPrice = target.price ?? current.price;
       const savings = Math.round((current.price - newPrice) * current.qty * 100) / 100;
 
-      // No hay `removeCartItem` en la capa de datos: bajar a 0 es la baja lógica.
-      await updateCartItemQty(current.id, 0);
+      // El swap borra la línea vieja: `qty: 0` no existe (check `qty > 0`).
+      await dropCartItem(householdId, current.id);
       const row = await insertCartItem(householdId, {
         productId: target.id,
         title: target.title,
@@ -150,11 +147,9 @@ async function runTool(
 
     case "set_budget": {
       const args = call.args as ToolArgs["set_budget"];
-      // TODO(data): falta un `setHouseholdBudget` en `src/lib/data`. Mientras
-      // tanto el presupuesto viaja como acción y lo confirma la UI: no se
-      // inventa una escritura a una tabla que no es de este agente.
+      const applied = await setBudget(householdId, args.monthly);
       return {
-        result: { proposedMonthly: args.monthly, applied: false, note: "queda propuesto para confirmar en pantalla" },
+        result: { monthly: args.monthly, applied },
         actions: [{ kind: "set-budget", monthly: args.monthly }],
       };
     }
@@ -230,10 +225,12 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
   }
-  const { householdId, message, userId } = parsed.data;
+  const { householdId, message } = parsed.data;
 
-  const denied = await membershipGate(userId, householdId);
+  // La identidad sale de la sesión de Clerk, no del body.
+  const { denied, identity } = await membershipGate(householdId);
   if (denied) return denied;
+  const userId = identity.profileId;
 
   // El efecto "vivo": las dos pantallas ven que la IA arrancó antes de que el
   // modelo devuelva nada. Ephemeral porque no debe quedar en el historial.
