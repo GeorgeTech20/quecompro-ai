@@ -32,6 +32,15 @@ export type CartItemPayload = {
   store?: string;
   category?: string;
   healthGrade?: HealthGrade;
+  /** Id de catálogo, si el item salió del catálogo y no de texto libre. */
+  productId?: string | null;
+  /**
+   * Clave canónica del producto ("pollo-entero"), compartida entre tiendas.
+   * Viaja en el evento porque quien recibe el alta necesita poder pedir
+   * precios sin volver a la base: sin esto, la otra pantalla solo tiene el
+   * título y tendría que adivinar la clave a partir del texto.
+   */
+  productKey?: string | null;
   addedBy?: { id: string; name: string; avatarUrl?: string | null };
 };
 
@@ -57,7 +66,18 @@ export type CartEvent =
       itemId: string;
       healthGrade: HealthGrade;
       reason: string;
-      cheaper?: { title: string; store: string; price: number; savings: number };
+      /**
+       * `productId` va incluido para que aceptar el swap sea una escritura
+       * directa: buscarlo por nombre + tienda falla justo cuando el catálogo
+       * tiene el mismo producto repetido en varias cadenas.
+       */
+      cheaper?: {
+        productId?: string | null;
+        title: string;
+        store: string;
+        price: number;
+        savings: number;
+      };
       budgetAlert?: { spent: number; budget: number; projected: number };
     }
   /** Precios frescos de tiendas para un producto. */

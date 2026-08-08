@@ -83,11 +83,15 @@ export async function POST(request: Request): Promise<Response> {
   });
 
   // 2) Alternativa más barata.
-  let cheaper: { title: string; store: string; price: number; savings: number } | undefined;
+  let cheaper: NonNullable<Extract<CartEvent, { type: "ai-verdict" }>["cheaper"]> | undefined;
   try {
     const alternative = await findCheaper(productId ?? cartItem?.productId);
     if (alternative && alternative.price < price) {
       cheaper = {
+        // Con el id, aceptar el swap es una escritura directa: sin él habría
+        // que buscar por nombre + tienda, que falla justo cuando el catálogo
+        // tiene el mismo producto en varias cadenas.
+        productId: alternative.productId,
         title: alternative.title,
         store: alternative.store,
         price: alternative.price,
