@@ -10,7 +10,17 @@ import { Portal } from "@portalsdk/core";
  * Aquí solo viaja la publishable key, que es pública por diseño.
  */
 let client: Portal | undefined;
-const portalPublishableKey = String(process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY ?? "").trim();
+
+/**
+ * Las comillas y el BOM se cuelan al pegar el valor en el panel de Vercel, y
+ * como `NEXT_PUBLIC_*` se inlinea en el bundle tal cual, la key llegaría con
+ * comillas al socket y Portal respondería `invalid_api_key`.
+ */
+const portalPublishableKey = String(process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY ?? "")
+  .replace(/^﻿/, "")
+  .trim()
+  .replace(/^["']|["']$/g, "")
+  .trim();
 
 /** True cuando la publishable key existe y no está vacía. */
 export function isPortalPublishableConfigured(): boolean {
@@ -31,8 +41,19 @@ export function getPortalClient(): Portal {
  * El SDK lo vuelve a llamar cuando el token caduca, así que no cacheamos.
  */
 export async function fetchPortalToken(): Promise<string> {
-  const res = await fetch("/api/portal-token", { credentials: "include" });
-  if (!res.ok) throw new Error(`portal-token ${res.status}`);
+  const res = await fetch("/api/portal-token", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    // El `code` viene de Portal (`invalid_api_key`, `forbidden`…): sin él, un
+    // 502 en consola no dice nada sobre qué variable está mal.
+    const detail = await res
+      .json()
+      .then((body: { code?: string }) => (body.code ? ` (${body.code})` : ""))
+      .catch(() => "");
+    throw new Error(`portal-token ${res.status}${detail}`);
+  }
   const { token } = (await res.json()) as { token: string };
   return token;
 }

@@ -3,6 +3,7 @@ import "server-only";
 import { Portal, PortalError, type ChannelHandle } from "@portalsdk/core";
 
 import { channels, type CartEvent, type ChatEvent, type InboxEvent } from "./channels";
+import { mintPortalToken, portalPublishableKey, portalSecretKey } from "./portal-mint";
 
 /**
  * Publicación en canales Portal **desde el servidor**.
@@ -43,10 +44,29 @@ let disabled = false;
 /** Ninguna API route puede quedarse colgada esperando al socket. */
 const SEND_TIMEOUT_MS = 4000;
 
+/** Id con el que la IA aparece en el canal. Portal lo pone como `sub`. */
+const ASSISTANT_USER_ID = "assistant";
+
 function portalApiKey(): string | undefined {
-  // .env.example reserva PORTAL_SECRET_KEY para publicar desde API routes; si no
-  // está, la publishable + el token del bot alcanzan.
-  return process.env.PORTAL_SECRET_KEY || process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY || undefined;
+  // El edge de realtime identifica el environment por la key del socket: la
+  // publishable es la correcta. La secret solo se usa para acuñar el token.
+  return portalPublishableKey() ?? portalSecretKey();
+}
+
+/**
+ * Token de la IA. El SDK lo vuelve a pedir al reconectar y al expirar, así que
+ * no cacheamos: acuñar cuesta un round-trip y evita quedarse con uno vencido.
+ *
+ * Sin secret key no hay token identificado; el SDK cae a modo anónimo, que
+ * sigue publicando mientras el canal admita anónimos.
+ */
+async function assistantToken(): Promise<string> {
+  const { token } = await mintPortalToken({
+    userId: ASSISTANT_USER_ID,
+    claims: { name: "Asistente", bot: true },
+    ttl: "1h",
+  });
+  return token;
 }
 
 function serverPortal(): Portal | undefined {
@@ -60,7 +80,9 @@ function serverPortal(): Portal | undefined {
     return undefined;
   }
 
-  portal = new Portal({ apiKey });
+  portal = portalSecretKey()
+    ? new Portal({ apiKey, token: assistantToken })
+    : new Portal({ apiKey });
   return portal;
 }
 
