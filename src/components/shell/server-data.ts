@@ -129,7 +129,7 @@ export async function resolveViewer(): Promise<Viewer | null> {
     "Invitado";
 
   const existing = await getProfileByClerkId(user.id);
-  const profile: ProfileRow =
+  const profile =
     existing ??
     (await upsertProfile({
       clerk_id: user.id,
@@ -138,16 +138,33 @@ export async function resolveViewer(): Promise<Viewer | null> {
       avatar_url: user.imageUrl,
     }));
 
-  const household = profile.active_household_id
-    ? await getHouseholdById(profile.active_household_id)
+  const storedIsFallback =
+    existing !== null &&
+    (existing.full_name === null ||
+      existing.full_name === user.username ||
+      existing.full_name === email?.split("@")[0]?.toLocaleLowerCase());
+
+  const needsSync = storedIsFallback && existing!.full_name !== fallbackName;
+
+  const synced = needsSync
+    ? await upsertProfile({
+        clerk_id: user.id,
+        email,
+        full_name: fallbackName,
+        avatar_url: user.imageUrl,
+      })
+    : profile;
+
+  const household = synced.active_household_id
+    ? await getHouseholdById(synced.active_household_id)
     : null;
 
   return {
-    profile,
+    profile: synced,
     household,
     clerkId: user.id,
-    displayName: profile.full_name ?? fallbackName,
-    avatarUrl: profile.avatar_url ?? user.imageUrl ?? null,
+    displayName: synced.full_name ?? fallbackName,
+    avatarUrl: synced.avatar_url ?? user.imageUrl ?? null,
   };
 }
 
