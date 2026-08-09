@@ -10,7 +10,7 @@ import { Portal } from "@portalsdk/core";
  * Aquí solo viaja la publishable key, que es pública por diseño.
  */
 let client: Portal | undefined;
-const portalPublishableKey = process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY?.trim() ?? "";
+const portalPublishableKey = String(process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY ?? "").trim();
 
 /** True cuando la publishable key existe y no está vacía. */
 export function isPortalPublishableConfigured(): boolean {
