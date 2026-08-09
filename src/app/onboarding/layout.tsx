@@ -34,7 +34,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       <aside className="relative hidden min-h-0 overflow-hidden rounded-panel bg-[#e7eaeb] p-5 lg:flex lg:flex-col">
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-card bg-white">
           <img
-            src="/hero/onboarding-food.png"
+            src="/hero/onboarding-food.webp"
             alt="Ingredientes frescos organizados sobre una mesa"
             className="absolute inset-0 size-full object-cover"
           />

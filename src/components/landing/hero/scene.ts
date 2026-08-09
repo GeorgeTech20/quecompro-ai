@@ -70,7 +70,7 @@ export type HeroProduct = {
 export const PRODUCTS: readonly HeroProduct[] = [
   {
     id: "platano",
-    src: "/hero/food/opt/01.png",
+    src: "/hero/food/opt/01.webp",
     px: { w: 760, h: 573 },
     name: "Plátano de seda",
     short: "plátano",
@@ -86,7 +86,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "verduras",
-    src: "/hero/food/opt/02.png",
+    src: "/hero/food/opt/02.webp",
     px: { w: 760, h: 624 },
     name: "Verduras del mercado",
     short: "verduras",
@@ -102,7 +102,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "pollo",
-    src: "/hero/food/opt/03.png",
+    src: "/hero/food/opt/03.webp",
     px: { w: 442, h: 596 },
     name: "Pollo entero",
     short: "pollo",
@@ -118,7 +118,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "manzana",
-    src: "/hero/food/opt/04.png",
+    src: "/hero/food/opt/04.webp",
     px: { w: 760, h: 561 },
     name: "Manzana Israel",
     short: "manzana",
@@ -134,7 +134,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "leche",
-    src: "/hero/food/opt/06.png",
+    src: "/hero/food/opt/06.webp",
     px: { w: 385, h: 760 },
     name: "Leche entera",
     short: "leche",
@@ -150,7 +150,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "res",
-    src: "/hero/food/opt/07.png",
+    src: "/hero/food/opt/07.webp",
     px: { w: 494, h: 599 },
     name: "Bife de res",
     short: "res",
@@ -166,7 +166,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "sandia",
-    src: "/hero/food/opt/08.png",
+    src: "/hero/food/opt/08.webp",
     px: { w: 736, h: 760 },
     name: "Sandía",
     short: "sandía",
@@ -182,7 +182,7 @@ export const PRODUCTS: readonly HeroProduct[] = [
   },
   {
     id: "cebolla",
-    src: "/hero/food/opt/10.png",
+    src: "/hero/food/opt/10.webp",
     px: { w: 291, h: 261 },
     name: "Cebolla en malla",
     short: "cebolla",

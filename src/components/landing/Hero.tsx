@@ -23,7 +23,12 @@ import { HERO } from "./hero/scene";
  * `09.png` es un recorte cenital real de carrito con las dos manos en el
  * manubrio: es exactamente la toma que pide la composición.
  */
-const CART_CANDIDATES = ["hero/cart.png", "hero/food/opt/09.png", "hero/food/09.png"] as const;
+const CART_CANDIDATES = [
+  "hero/cart.png",
+  "hero/food/opt/09.webp",
+  "hero/food/opt/09.png",
+  "hero/food/09.png",
+] as const;
 
 function resolveCart(): string | null {
   const publicDir = path.join(process.cwd(), "public");

@@ -129,7 +129,7 @@ function InviteFrame({ children }: { children: React.ReactNode }) {
 
       <div className="mt-8 grid w-full max-w-4xl overflow-hidden rounded-panel border border-border-subtle bg-surface shadow-raised md:grid-cols-[0.85fr_1.15fr]">
         <div className="relative hidden min-h-[28rem] overflow-hidden bg-brand-50 md:block">
-          <img src="/hero/onboarding-food.png" alt="Mesa clara con huevos y pan" className="absolute inset-0 size-full object-cover" />
+          <img src="/hero/onboarding-food.webp" alt="Mesa clara con huevos y pan" className="absolute inset-0 size-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent" />
           <p className="absolute inset-x-6 bottom-6 text-lg font-medium leading-snug text-white">Las mejores compras se hacen en equipo.</p>
         </div>
