@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 
 import { formatPEN } from "@/components/ui";
 
+import { BLUR } from "./blurs";
 import { PriceTag } from "./PriceTag";
 import {
   HERO,
@@ -161,6 +162,9 @@ export function FloatingProduct({
                   alt=""
                   width={product.px.w}
                   height={product.px.h}
+                  priority
+                  placeholder="blur"
+                  blurDataURL={BLUR[product.src as keyof typeof BLUR] ?? undefined}
                   draggable={false}
                   sizes="(max-width: 767px) 30vw, 16vw"
                   className="h-auto w-full select-none"

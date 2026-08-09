@@ -5,6 +5,7 @@ import { useInView, useMotionValue, useReducedMotion, useSpring } from "motion/r
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 
 import { CartArt } from "./CartArt";
+import { BLUR } from "./blurs";
 import { FloatingProduct } from "./FloatingProduct";
 import { ShoppingList } from "./ShoppingList";
 import { TotalCard } from "./TotalCard";
@@ -161,6 +162,8 @@ export function HeroStage({ cartSrc }: HeroStageProps) {
                   alt="Carrito de compras visto desde arriba"
                   fill
                   priority
+                  placeholder="blur"
+                  blurDataURL={cartSrc.endsWith(".webp") ? BLUR["hero/food/opt/09.webp"] : undefined}
                   sizes="(max-width: 767px) 50vw, 30vw"
                   className="object-contain select-none"
                   style={{ filter: "drop-shadow(0 26px 34px rgba(20,48,74,0.3))" }}
