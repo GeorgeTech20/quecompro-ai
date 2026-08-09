@@ -1,13 +1,15 @@
 "use client";
 
 import { IconCamera, IconCheck, IconPhoto } from "@tabler/icons-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Avatar, Button, cn, CloseIcon, LiveDot, Money } from "@/components/ui";
 import type { CartWatcher } from "@/hooks/use-cart-presence";
 import type { PurchaseFeedEntry } from "@/hooks/use-live-cart";
 import { prepareImageUpload } from "@/lib/images/prepare-upload";
 import type { CartItemPayload } from "@/lib/realtime/channels";
+
+import { PurchasePhotoGallery, type GalleryPhoto } from "./PurchasePhotoGallery";
 
 /**
  * La hoja de pedidos a pantalla completa: la que se ve en el supermercado.
@@ -54,6 +56,41 @@ export function PurchaseRunSheet({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoItemId, setPhotoItemId] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
+
+  /** Las fotos de la compra de hoy, en orden del feed, para la galería. */
+  const galleryPhotos = useMemo<GalleryPhoto[]>(() => {
+    const seen = new Set<string>();
+    const photos: GalleryPhoto[] = [];
+    for (const entry of purchaseFeed) {
+      if (!entry.photoUrl || seen.has(entry.itemId)) continue;
+      seen.add(entry.itemId);
+      photos.push({
+        id: entry.itemId,
+        title: entry.title,
+        url: entry.photoUrl,
+        by: entry.by?.name ?? null,
+      });
+    }
+    for (const item of items) {
+      if (!item.purchasePhotoUrl || seen.has(item.id)) continue;
+      seen.add(item.id);
+      photos.push({
+        id: item.id,
+        title: item.title,
+        url: item.purchasePhotoUrl,
+        by: item.purchasedBy?.name ?? null,
+      });
+    }
+    return photos;
+  }, [purchaseFeed, items]);
+
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+
+  /** Abre la galería en la foto de un item, si existe. */
+  function openGalleryFor(itemId: string) {
+    const idx = galleryPhotos.findIndex((photo) => photo.id === itemId);
+    if (idx >= 0) setGalleryIndex(idx);
+  }
 
   const purchasedCount = items.filter((item) => item.purchasedAt).length;
 
@@ -190,11 +227,18 @@ export function PurchaseRunSheet({
 
                   {bought ? (
                     item.purchasePhotoUrl ? (
-                      <img
-                        src={item.purchasePhotoUrl}
-                        alt={`Foto de ${item.title} comprado`}
-                        className="size-12 shrink-0 rounded-card border border-border-subtle object-cover"
-                      />
+                      <button
+                        type="button"
+                        aria-label={`Ver foto de ${item.title} comprado`}
+                        onClick={() => openGalleryFor(item.id)}
+                        className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                      >
+                        <img
+                          src={item.purchasePhotoUrl}
+                          alt={`Foto de ${item.title} comprado`}
+                          className="size-12 rounded-card border border-border-subtle object-cover transition-transform duration-150 hover:scale-105"
+                        />
+                      </button>
                     ) : (
                       <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-dashed border-border-subtle text-ink-faint">
                         <IconCheck className="size-5" strokeWidth={3} />
@@ -242,7 +286,7 @@ export function PurchaseRunSheet({
               </p>
             ) : (
               purchaseFeed.map((entry) => (
-                <FeedRow key={entry.itemId} entry={entry} />
+                <FeedRow key={entry.itemId} entry={entry} onOpenPhoto={openGalleryFor} />
               ))
             )}
           </div>
@@ -273,12 +317,25 @@ export function PurchaseRunSheet({
         disabled={preparing}
         onChange={(event) => void handlePhotoFile(event.target.files?.[0])}
       />
+
+      {galleryIndex != null && galleryPhotos.length > 0 ? (
+        <PurchasePhotoGallery
+          photos={galleryPhotos}
+          initialIndex={Math.min(galleryIndex, galleryPhotos.length - 1)}
+          onClose={() => setGalleryIndex(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function FeedRow({ entry }: { entry: PurchaseFeedEntry }) {
-  const [open, setOpen] = useState(false);
+function FeedRow({
+  entry,
+  onOpenPhoto,
+}: {
+  entry: PurchaseFeedEntry;
+  onOpenPhoto: (itemId: string) => void;
+}) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <Avatar
@@ -296,43 +353,18 @@ function FeedRow({ entry }: { entry: PurchaseFeedEntry }) {
         <p className="text-xs text-ink-muted">{timeAgo(entry.at)}</p>
       </div>
       {entry.photoUrl ? (
-        <>
-          <button
-            type="button"
-            aria-label={`Ver foto de ${entry.title}`}
-            onClick={() => setOpen(true)}
-            className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-          >
-            <img
-              src={entry.photoUrl}
-              alt={`Foto de ${entry.title}`}
-              className="size-11 rounded-lg border border-border-subtle object-cover"
-            />
-          </button>
-          {open ? (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-6 backdrop-blur-sm"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`Foto de ${entry.title}`}
-              onClick={() => setOpen(false)}
-            >
-              <img
-                src={entry.photoUrl}
-                alt={`Foto de ${entry.title}`}
-                className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-raised"
-              />
-              <button
-                type="button"
-                aria-label="Cerrar foto"
-                className="absolute top-4 right-4 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
-                onClick={() => setOpen(false)}
-              >
-                <CloseIcon className="size-5" />
-              </button>
-            </div>
-          ) : null}
-        </>
+        <button
+          type="button"
+          aria-label={`Ver foto de ${entry.title}`}
+          onClick={() => onOpenPhoto(entry.itemId)}
+          className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+        >
+          <img
+            src={entry.photoUrl}
+            alt={`Foto de ${entry.title}`}
+            className="size-11 rounded-lg border border-border-subtle object-cover transition-transform duration-150 hover:scale-105"
+          />
+        </button>
       ) : (
         <IconPhoto className="size-4 shrink-0 text-ink-faint" aria-hidden="true" />
       )}

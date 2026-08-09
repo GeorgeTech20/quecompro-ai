@@ -9,6 +9,7 @@ import type { CartItemPayload, PriceQuote } from "@/lib/realtime/channels";
 
 import { MarketPriceModal } from "./MarketPriceModal";
 import { PriceCheckButton } from "./PriceCheckButton";
+import { PurchasePhotoGallery } from "./PurchasePhotoGallery";
 
 /**
  * Una línea del carrito. Todo lo que cambia en vivo entra por aquí: la nota de
@@ -297,27 +298,11 @@ export function CartItemRow({
       />
 
       {photoOpen && item.purchasePhotoUrl ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-6 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Foto de ${item.title}`}
-          onClick={() => setPhotoOpen(false)}
-        >
-          <img
-            src={item.purchasePhotoUrl}
-            alt={`Foto de ${item.title} comprado`}
-            className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-raised"
-          />
-          <button
-            type="button"
-            aria-label="Cerrar foto"
-            className="absolute top-4 right-4 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
-            onClick={() => setPhotoOpen(false)}
-          >
-            <CloseIcon className="size-5" />
-          </button>
-        </div>
+        <PurchasePhotoGallery
+          photos={[{ id: item.id, title: item.title, url: item.purchasePhotoUrl }]}
+          initialIndex={0}
+          onClose={() => setPhotoOpen(false)}
+        />
       ) : null}
     </li>
   );
