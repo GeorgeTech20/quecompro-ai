@@ -3,7 +3,7 @@
 import { PortalProvider } from "@portalsdk/react";
 import { createContext, useContext, type ReactNode } from "react";
 
-import { getPortalClient } from "@/lib/realtime/portal-client";
+import { fetchPortalToken, getPortalClient } from "@/lib/realtime/portal-client";
 
 type HouseholdContext = {
   householdId: string;
@@ -26,7 +26,7 @@ export function RealtimeProvider({
   ...household
 }: HouseholdContext & { children: ReactNode }) {
   return (
-    <PortalProvider client={getPortalClient()}>
+    <PortalProvider client={getPortalClient()} token={fetchPortalToken}>
       <Ctx.Provider value={household}>{children}</Ctx.Provider>
     </PortalProvider>
   );
