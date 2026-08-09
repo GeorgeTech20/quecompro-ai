@@ -56,13 +56,8 @@ export const HERO_CSS = `
   animation: qc-hero-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Los CTA del hero llevan color propio en línea (la escena no usa los tokens
-   de superficie), así que el hover no puede venir de una clase de Tailwind. */
-.qc-cta {
-  transition: filter 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.qc-cta:hover { filter: brightness(1.14); }
-.qc-cta:active { transform: translateY(1px); }
+/* Los CTA del hero heredan la profundidad táctil del sistema global. */
+.qc-cta { will-change: transform; }
 
 /* Papel: fibra muy tenue para que la lista no parezca un div blanco. */
 .qc-paper {

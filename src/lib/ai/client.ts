@@ -5,18 +5,21 @@ import OpenAI from "openai";
 /**
  * Cliente OpenAI + **modo degradado**.
  *
- * Sin `OPENAI_API_KEY` la app no se cae: `isModelAvailable()` da false y el
- * asistente responde con heurísticas. La demo tiene que correr en la laptop de
- * cualquiera, con o sin key.
+ * OpenRouter es el proveedor preferido, usando la compatibilidad del SDK de
+ * OpenAI. Si no hay ninguna key, el asistente responde con heurísticas y la app
+ * sigue funcionando.
  */
 
 let client: OpenAI | undefined;
 
 export function isModelAvailable(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return Boolean(process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY);
 }
 
 export function openaiModel(): string {
+  if (process.env.OPENROUTER_API_KEY) {
+    return process.env.OPENROUTER_MODEL ?? process.env.OPENAI_MODEL ?? "openai/gpt-4o-mini";
+  }
   return process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 }
 
@@ -24,8 +27,18 @@ export function openaiModel(): string {
 export function openaiClient(): OpenAI | undefined {
   if (!isModelAvailable()) return undefined;
   if (!client) {
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
     client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: openRouterKey ?? process.env.OPENAI_API_KEY,
+      ...(openRouterKey
+        ? {
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: {
+              "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3999",
+              "X-OpenRouter-Title": "QuéComproo",
+            },
+          }
+        : {}),
       // Una API route no puede quedarse esperando al modelo: la respuesta del
       // canal se siente en vivo o no se siente.
       timeout: 20_000,

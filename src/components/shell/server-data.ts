@@ -65,6 +65,8 @@ export type ProfilePatch = {
   full_name?: string | null;
   avatar_url?: string | null;
   whatsapp_phone?: string | null;
+  occupation?: string | null;
+  shopping_goals?: string[];
   diet_tags?: string[];
   allergies?: string[];
 };

@@ -99,11 +99,24 @@ export function AddItemBar({ householdId, onAdd, onTyping, className }: AddItemB
     // Con flechas ya hay una opción marcada: que la elija el Combobox.
     if (arrowUsedRef.current) return;
 
-    const first = hitsRef.current[0];
-    if (!first) return;
     event.preventDefault();
     event.stopPropagation();
-    add(first);
+
+    const first = hitsRef.current[0];
+    if (first) {
+      add(first);
+      return;
+    }
+
+    // Sin resultado en el catálogo: igual se lleva. Va al mercado, se paga
+    // ahí y el precio se registra desde la fila (puesto, nota y todos).
+    const term = query.trim();
+    if (term.length >= 2) {
+      setQuery("");
+      setHits([]);
+      arrowUsedRef.current = false;
+      void onAdd({ title: term, price: 0, qty: 1, unit: "und" });
+    }
   }
 
   return (
@@ -118,8 +131,12 @@ export function AddItemBar({ householdId, onAdd, onTyping, className }: AddItemB
         options={options}
         loading={loading}
         keepQueryOnSelect
-        placeholder="Pollo, leche, arroz… escribe y dale Enter"
-        emptyMessage={query.trim().length < 2 ? "Escribe al menos 2 letras" : "Sin resultados"}
+        placeholder="Agrega algo a la lista"
+        emptyMessage={
+          query.trim().length < 2
+            ? "Escribe al menos 2 letras"
+            : "No está en el catálogo: Enter igual lo agrega, el precio se registra en el puesto"
+        }
         onSelect={(option) => {
           const hit = hitsRef.current.find((candidate) => candidate.id === option.id);
           if (hit) add(hit);

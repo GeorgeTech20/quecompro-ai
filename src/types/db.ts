@@ -31,6 +31,9 @@ export type ProductCategory =
   | "condimentos";
 
 export type PriceSource = "live" | "dataset";
+export type MealType = "breakfast" | "lunch" | "dinner";
+export type MealComponent = "produce" | "protein" | "carbs";
+export type MealEvidenceType = "photo";
 
 // --- households ------------------------------------------------------------
 
@@ -60,6 +63,8 @@ export type ProfileRow = {
   full_name: string | null;
   avatar_url: string | null;
   whatsapp_phone: string | null;
+  occupation: string | null;
+  shopping_goals: string[];
   diet_tags: string[];
   allergies: string[];
   active_household_id: string | null;
@@ -73,6 +78,8 @@ export type ProfileUpsert = {
   full_name?: string | null;
   avatar_url?: string | null;
   whatsapp_phone?: string | null;
+  occupation?: string | null;
+  shopping_goals?: string[];
   diet_tags?: string[];
   allergies?: string[];
   active_household_id?: string | null;
@@ -145,7 +152,11 @@ export type CartItemRow = {
   store: string | null;
   category: string | null;
   health_grade: HealthGrade | null;
+  note: string | null;
   added_by: string | null;
+  purchased_at: string | null;
+  purchased_by: string | null;
+  purchase_photo_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -160,7 +171,52 @@ export type CartItemInsert = {
   store?: string | null;
   category?: string | null;
   health_grade?: HealthGrade | null;
+  note?: string | null;
   added_by?: string | null;
+};
+
+// --- meal_logs / healthy streak -------------------------------------------
+
+export type MealLogRow = {
+  id: string;
+  household_id: string;
+  profile_id: string;
+  meal_date: string;
+  meal_type: MealType;
+  health_grade: HealthGrade;
+  title: string;
+  components: MealComponent[];
+  evidence_type: MealEvidenceType;
+  evidence_path: string;
+  verified_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealLogInsert = {
+  household_id: string;
+  profile_id: string;
+  meal_date?: string;
+  meal_type: MealType;
+  health_grade?: HealthGrade;
+  title: string;
+  components: MealComponent[];
+  evidence_type: MealEvidenceType;
+  evidence_path: string;
+  verified_at?: string;
+};
+
+// --- meal_plans / today and tomorrow --------------------------------------
+
+export type MealPlanRow = {
+  id: string;
+  household_id: string;
+  created_by: string | null;
+  plan_date: string;
+  meal_type: MealType;
+  title: string;
+  created_at: string;
+  updated_at: string;
 };
 
 // --- transactions ----------------------------------------------------------
@@ -240,4 +296,35 @@ export type PriceSnapshotInsert = {
   unit?: string;
   source?: PriceSource;
   fetched_at?: string;
+};
+
+// --- market_prices ----------------------------------------------------------
+
+export type MarketPriceRow = {
+  id: string;
+  household_id: string;
+  cart_item_id: string | null;
+  product_key: string;
+  title: string;
+  unit: string;
+  price: number;
+  market: string | null;
+  stall: string | null;
+  note: string | null;
+  recorded_by: string | null;
+  recorded_at: string;
+  updated_at: string;
+};
+
+export type MarketPriceInsert = {
+  household_id: string;
+  cart_item_id?: string | null;
+  product_key: string;
+  title: string;
+  unit?: string;
+  price: number;
+  market?: string | null;
+  stall?: string | null;
+  note?: string | null;
+  recorded_by?: string | null;
 };

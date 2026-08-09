@@ -1,81 +1,129 @@
-const FEATURES = [
+"use client";
+
+import { motion, useReducedMotion } from "motion/react";
+
+import { Container, Section, SectionHead } from "./sections/Section";
+import { reveal } from "./sections/theme";
+
+/* --------------------------------------------------------------------------
+   Qué hace la IA. Cuatro tarjetas editoriales al estilo de r6: crema, serif y
+   un símbolo gigante por tarjeta. La de ahorro va invertida en verde profundo
+   porque es la que habla de plata, y de paso enlaza con el footer.
+-------------------------------------------------------------------------- */
+
+type Feature = {
+  glyph: string;
+  sub: string;
+  label: string;
+  title: string;
+  body: string;
+  invert: boolean;
+};
+
+const FEATURES: readonly Feature[] = [
   {
     glyph: "A",
-    sub: "–D",
+    sub: "-D",
     label: "Salud",
     title: "Una nota, no un sermón",
-    body: "Cada producto que entra recibe A, B, C o D según lo procesado que sea, el azúcar y el sodio. Sin discursos: una letra y una razón en una línea.",
-    tint: "bg-brand-50 dark:bg-brand-900/35",
-    glyphTint: "text-brand-600 dark:text-brand-300",
+    body: "Cada producto recibe A, B, C o D según lo procesado que sea, el azúcar y el sodio. Una letra y una razón en una línea.",
+    invert: false,
   },
   {
     glyph: "S/",
     sub: "",
     label: "Ahorro",
     title: "El mismo producto, más barato",
-    body: "Compara lo que agregaste contra otras tiendas y te dice dónde cuesta menos y cuánto te ahorras si cambias. Tú decides si cambias o no.",
-    tint: "bg-lime-soft dark:bg-lime-accent/10",
-    glyphTint: "text-brand-700 dark:text-lime-accent",
+    body: "Compara contra otras tiendas y te dice dónde cuesta menos y cuánto te ahorras. Tú decides si cambias.",
+    invert: true,
   },
   {
     glyph: "2",
     sub: "+",
     label: "Presencia",
     title: "Ves quién está comprando",
-    body: "El carrito es uno solo y se actualiza mientras el otro camina por el pasillo. Nadie compra el arroz dos veces.",
-    tint: "bg-grade-c/10 dark:bg-grade-c/15",
-    glyphTint: "text-grade-c",
+    body: "El carrito es uno solo y se actualiza mientras el otro camina por el mercado.",
+    invert: false,
   },
   {
-    glyph: "+51",
-    sub: "",
-    label: "WhatsApp",
-    title: "También desde el chat de siempre",
-    body: "Mandas lo que compraste por WhatsApp y entra al mismo carrito. Modo demostración: el puente está para que lo veas funcionando.",
-    tint: "bg-surface-sunken dark:bg-surface",
-    glyphTint: "text-ink-muted",
+    glyph: "7",
+    sub: "días",
+    label: "Hábitos",
+    title: "Una racha que sí significa algo",
+    body: "Planifica tus comidas y protege el día con dos registros balanceados y evidencia privada.",
+    invert: false,
   },
-] as const;
+];
 
 export function Features() {
-  return (
-    <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
-      <div className="max-w-2xl">
-        <p className="text-brand-600 text-sm font-medium">Qué hace la IA</p>
-        <h2 className="text-ink mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Cuatro cosas, bien hechas.
-        </h2>
-      </div>
+  const reduced = useReducedMotion() ?? false;
 
-      <ul className="mt-12 grid gap-4 sm:grid-cols-2">
-        {FEATURES.map((feature) => (
-          <li
-            key={feature.label}
-            className={`rounded-sheet border-border-subtle border p-6 sm:p-8 ${feature.tint}`}
-          >
-            <p className="text-ink-muted text-xs font-medium tracking-wide uppercase">
-              {feature.label}
-            </p>
-            <p
-              aria-hidden="true"
-              className={`mt-2 flex items-baseline gap-1 text-7xl leading-none font-semibold tracking-tighter ${feature.glyphTint}`}
+  return (
+    <Section tone="cream" fadeFrom="var(--qc-green)" aria-labelledby="ia-titulo">
+      <Container className="pt-24 pb-20 sm:pt-28 lg:pt-32 lg:pb-28">
+        <SectionHead
+          id="ia-titulo"
+          eyebrow="Qué hace la IA"
+          title="Compra, cocina y ahorra en un solo lugar."
+          titleClassName="max-w-[16ch]"
+        />
+
+        <ul className="mt-14 grid gap-4 sm:grid-cols-2 lg:mt-20">
+          {FEATURES.map((feature, index) => (
+            <motion.li
+              key={feature.label}
+              {...reveal(index, reduced)}
+              className="relative flex flex-col overflow-hidden rounded-[22px] border p-7 sm:p-9"
+              style={{
+                backgroundColor: feature.invert ? "var(--qc-green)" : "var(--qc-card)",
+                borderColor: feature.invert ? "transparent" : "var(--qc-line-soft)",
+                color: feature.invert ? "var(--qc-on-green)" : "var(--qc-ink)",
+                boxShadow: feature.invert ? "var(--qc-shadow)" : "none",
+              }}
             >
-              {feature.glyph}
-              {feature.sub && (
-                <span className="text-2xl tracking-normal opacity-60">
-                  {feature.sub}
-                </span>
-              )}
-            </p>
-            <h3 className="text-ink mt-6 text-lg font-semibold tracking-tight">
-              {feature.title}
-            </h3>
-            <p className="text-ink-muted mt-2 max-w-md text-sm leading-relaxed">
-              {feature.body}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
+              <p
+                className="text-[11px] font-semibold tracking-[0.2em] uppercase"
+                style={{
+                  color: feature.invert ? "var(--qc-lime)" : "var(--qc-ink-soft)",
+                }}
+              >
+                {feature.label}
+              </p>
+
+              <p
+                aria-hidden="true"
+                className="qc-serif mt-4 flex items-baseline gap-1 leading-none tracking-tight"
+                style={{
+                  fontSize: "clamp(4rem, 9vw, 6.5rem)",
+                  color: feature.invert ? "var(--qc-on-green)" : "var(--qc-green)",
+                }}
+              >
+                {feature.glyph}
+                {feature.sub && (
+                  <span
+                    className="text-[0.34em] tracking-normal"
+                    style={{ opacity: 0.55 }}
+                  >
+                    {feature.sub}
+                  </span>
+                )}
+              </p>
+
+              <h3 className="mt-8 text-[19px] leading-snug font-semibold tracking-[-0.01em]">
+                {feature.title}
+              </h3>
+              <p
+                className="mt-2.5 max-w-md text-sm leading-relaxed"
+                style={{
+                  color: feature.invert ? "var(--qc-on-green-soft)" : "var(--qc-ink-soft)",
+                }}
+              >
+                {feature.body}
+              </p>
+            </motion.li>
+          ))}
+        </ul>
+      </Container>
+    </Section>
   );
 }

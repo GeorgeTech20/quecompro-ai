@@ -103,7 +103,10 @@ export function RoomiesList({
                 const isYou = member.clerkId === currentClerkId;
 
                 return (
-                  <li key={member.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <li
+                    key={member.id}
+                    className="group flex items-center gap-3 px-5 py-3.5 transition-colors duration-150 hover:bg-surface-sunken/40"
+                  >
                     <Avatar
                       size="md"
                       name={member.name}
@@ -124,7 +127,10 @@ export function RoomiesList({
                     </div>
 
                     {member.whatsapp ? (
-                      <WhatsappIcon className="size-4 shrink-0 text-brand-600" title="WhatsApp vinculado" />
+                      <WhatsappIcon
+                        className="size-4 shrink-0 text-brand-600"
+                        title="WhatsApp vinculado"
+                      />
                     ) : null}
 
                     <Badge tone={member.role === "owner" ? "brand" : "neutral"} size="sm">
@@ -165,7 +171,7 @@ function InviteCard({
   }, []);
 
   const link = token && origin ? `${origin}/invite/${token}` : "";
-  const whatsappText = `Oye, entra a nuestra lista de compras de ${householdName} en QuéCompro.app 👉 ${link}`;
+  const whatsappText = `Oye, entra a nuestra lista de compras de ${householdName} en QuéComproo 👉 ${link}`;
 
   function openModal() {
     setOpen(true);
@@ -200,7 +206,12 @@ function InviteCard({
             Un enlace y listo. Quien entre ve el mismo carrito, en vivo.
           </p>
         </div>
-        <Button onClick={openModal} iconLeft={<UsersIcon className="size-4" />}>
+        <Button
+          onClick={openModal}
+          iconLeft={<UsersIcon className="size-4" />}
+          className="w-full sm:w-auto"
+          size="lg"
+        >
           Invitar
         </Button>
       </Card>
@@ -225,7 +236,7 @@ function InviteCard({
             </p>
           ) : (
             <>
-              <div className="flex items-end gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <Input
                   label="Enlace de invitación"
                   value={link}
@@ -237,6 +248,7 @@ function InviteCard({
                   variant="secondary"
                   onClick={() => void copy(link, "Enlace")}
                   iconLeft={<CopyIcon className="size-4" />}
+                  className="w-full sm:w-auto"
                 >
                   Copiar
                 </Button>

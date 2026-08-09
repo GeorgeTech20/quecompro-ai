@@ -5,6 +5,7 @@ import type { PriceQuote } from "@/lib/realtime/channels";
 
 import { ALLOWED_DOMAINS, isAgentBrowserAvailable, scrapeStorePrice, type Store } from "./agent-browser";
 import { readFreshQuotes, writeQuotes } from "./cache";
+import { storeSearchUrl } from "./store-links";
 
 /**
  * Orquestador de precios: cache → scrape real → dataset.
@@ -33,7 +34,11 @@ async function datasetQuotes(productKey: string): Promise<PriceQuote[]> {
   try {
     const quotes = await loadPrices(productKey);
     // Se fuerza el origen: esta rama es el dataset, diga lo que diga la fila.
-    return quotes.map((quote) => ({ ...quote, source: "dataset" as const }));
+    return quotes.map((quote) => ({
+      ...quote,
+      source: "dataset" as const,
+      url: quote.url ?? storeSearchUrl(quote.store, productKey.replace(/-/g, " ")),
+    }));
   } catch (error) {
     console.warn(`[prices] dataset falló para ${productKey}: ${error instanceof Error ? error.message : "?"}`);
     return [];
@@ -53,6 +58,7 @@ async function liveQuotes(query: string): Promise<PriceQuote[]> {
       store: result.store,
       price: result.price,
       unit: "un",
+      url: result.url,
       fetchedAt,
       source: "live" as const,
     }));
@@ -62,8 +68,18 @@ async function liveQuotes(query: string): Promise<PriceQuote[]> {
  * Busca precios para un producto. Nunca lanza: siempre devuelve algo publicable.
  */
 export async function lookupPrices(productKey: string, query?: string): Promise<PriceLookup> {
+  const linkQuery = query ?? productKey.replace(/-/g, " ");
   const cached = await readFreshQuotes(productKey);
-  if (cached.length > 0) return { productKey, quotes: cached, origin: "cache" };
+  if (cached.length > 0) {
+    return {
+      productKey,
+      quotes: cached.map((quote) => ({
+        ...quote,
+        url: quote.url ?? storeSearchUrl(quote.store, linkQuery),
+      })),
+      origin: "cache",
+    };
+  }
 
   if (isDemoMode()) {
     return { productKey, quotes: await datasetQuotes(productKey), origin: "dataset", note: "DEMO_MODE" };
@@ -78,7 +94,7 @@ export async function lookupPrices(productKey: string, query?: string): Promise<
     };
   }
 
-  const scraped = await liveQuotes(query ?? productKey.replace(/-/g, " "));
+  const scraped = await liveQuotes(linkQuery);
   if (scraped.length > 0) {
     await writeQuotes(productKey, scraped);
     return { productKey, quotes: scraped, origin: "live" };

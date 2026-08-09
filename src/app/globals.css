@@ -1,65 +1,81 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   QueCompro.ai — design tokens
-   Sistema propio, estilo Polaris (Shopify): claro, luz de mercado, sin sombras
-   pesadas. Verde árbol como primario, lima como acento vivo.
+   QuéComproo — design tokens
+   Base blanca y celeste pastel con un único acento rojo. El verde queda
+   reservado para estados saludables o exitosos.
    Tailwind 4 es CSS-first: los tokens de @theme generan las utilidades
    (bg-brand-600, text-ink, rounded-card...). No hay tailwind.config.ts.
 --------------------------------------------------------------------------- */
 
 @theme {
-  /* Marca — verde árbol */
-  --color-brand-50: #ecfdf5;
-  --color-brand-100: #d1fae5;
-  --color-brand-200: #a7f3d0;
-  --color-brand-300: #6ee7b7;
-  --color-brand-400: #34d399;
-  --color-brand-500: #10b981;
-  --color-brand-600: #059669;
-  --color-brand-700: #047857;
-  --color-brand-800: #065f46;
-  --color-brand-900: #064e3b;
+  /* Marca — rojo canasta */
+  --color-brand-50: #fff2f1;
+  --color-brand-100: #ffe1de;
+  --color-brand-200: #ffc5c0;
+  --color-brand-300: #ff9d95;
+  --color-brand-400: #fb6d63;
+  --color-brand-500: #f0443a;
+  --color-brand-600: #e9342b;
+  --color-brand-700: #c52520;
+  --color-brand-800: #9f211e;
+  --color-brand-900: #821f1d;
 
-  /* Acento — lima (precios, ahorro, "vivo") */
-  --color-lime-accent: #a3e635;
-  --color-lime-soft: #ecfccb;
+  /* Acento frío — celeste pastel */
+  --color-lime-accent: #8bd8eb;
+  --color-lime-soft: #e8f8fc;
 
-  /* Superficies cálidas */
-  --color-canvas: #fafaf8;
+  /* Superficies claras con profundidad celeste, nunca crema. */
+  --color-canvas: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-sunken: #f4f4f0;
-  --color-border-subtle: #e7e7e1;
-  --color-border-strong: #d2d2c9;
+  --color-surface-sunken: #f1f9fc;
+  --color-border-subtle: #deedf2;
+  --color-border-strong: #cbdfe7;
 
   /* Tinta */
-  --color-ink: #1b1f2a;
-  --color-ink-muted: #5c6273;
-  --color-ink-faint: #8b90a0;
+  --color-ink: #142a3a;
+  --color-ink-muted: #566b78;
+  --color-ink-faint: #8397a2;
 
-  /* Semáforo nutricional */
-  --color-grade-a: #16a34a;
-  --color-grade-b: #84cc16;
-  --color-grade-c: #f59e0b;
-  --color-grade-d: #ef4444;
+  /* Semáforo nutricional (solo en la salud, no en la marca) */
+  --color-grade-a: #4e9d50;
+  --color-grade-b: #8cb93f;
+  --color-grade-c: #e0a53c;
+  --color-grade-d: #d9644d;
 
   /* Estado */
-  --color-danger: #dc2626;
-  --color-warning: #d97706;
-  --color-info: #2563eb;
+  --color-danger: #c94f3d;
+  --color-warning: #c98a2c;
+  --color-info: #2f83aa;
 
   /* Tipografía */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Radios 8–12 */
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
-  --radius-sheet: 1rem;
+  /* Radios — escala completa: 4px a pill.
+     Regla: los controles son 10px, los paneles 20–24px, el estado es pill.
+     El nombre (control/card/panel/sheet) se consume; la escala raw también. */
+  --radius-xs: 0.25rem;     /* 4px  — detalles mínimos */
+  --radius-sm: 0.5rem;      /* 8px  · micro-chips, tooltips */
+  --radius-md: 0.625rem;    /* 10px · inputs, botones, steppers */
+  --radius-lg: 0.875rem;    /* 14px · popovers, tabs, notificaciones */
+  --radius-xl: 1.25rem;     /* 20px · modales, cards compactas */
+  --radius-2xl: 1.5rem;     /* 24px · cards grandes, panels */
+  --radius-3xl: 2rem;       /* 32px · display/hero cards */
+  --radius-full: 9999px;    /* pills · chips, badges, avatares */
+
+  /* Alias semánticos: los componentes consumen estos nombres, no la escala. */
+  --radius-control: var(--radius-input); /* campos de formulario */
+  --radius-input: 1rem;        /* 16px · inputs, search, textarea */
+  --radius-button: 0.875rem;   /* 14px · botones md/lg, steppers */
+  --radius-chip: 9999px;       /* chips, badges, etiquetas redondas */
+  --radius-card: 1.25rem;      /* 20px · cards de resumen, tot, alerts */
+  --radius-sheet: 1.25rem;     /* 20px · modales, hojas */
+  --radius-panel: 1.5rem;      /* 24px · panel principal de la vista */
 
   /* Elevación suave, nunca dramática */
-  --shadow-card: 0 1px 2px rgb(27 31 42 / 0.06), 0 1px 3px rgb(27 31 42 / 0.04);
-  --shadow-raised: 0 4px 12px rgb(27 31 42 / 0.08);
-  --shadow-overlay: 0 16px 48px rgb(27 31 42 / 0.16);
+  --shadow-card: 0 1px 2px rgb(20 42 58 / 0.05), 0 3px 8px rgb(20 42 58 / 0.05);
+  --shadow-raised: 0 8px 20px rgb(20 42 58 / 0.11);
+  --shadow-overlay: 0 22px 58px rgb(20 42 58 / 0.18);
 
   /* Micro-motion 150–200ms */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
@@ -71,14 +87,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 .dark {
-  --color-canvas: #101314;
-  --color-surface: #171b1d;
-  --color-surface-sunken: #0b0e0f;
-  --color-border-subtle: #262c2e;
-  --color-border-strong: #38403f;
-  --color-ink: #eef2ef;
-  --color-ink-muted: #a2aaa8;
-  --color-ink-faint: #737d7b;
+  --color-canvas: #0e171d;
+  --color-surface: #152129;
+  --color-surface-sunken: #0a1217;
+  --color-border-subtle: #263842;
+  --color-border-strong: #36505d;
+  --color-ink: #eff8fb;
+  --color-ink-muted: #a9bec8;
+  --color-ink-faint: #78909b;
 }
 
 html,
@@ -87,9 +103,78 @@ body {
   color: var(--color-ink);
 }
 
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-ink);
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* --- Botones táctiles ----------------------------------------------------
+   La sombra inferior funciona como el borde físico de Duolingo: al presionar,
+   el control baja y la base se comprime. */
+
+.qc-tactile-primary {
+  border: 1px solid var(--color-brand-700);
+  box-shadow:
+    0 4px 0 var(--color-brand-800),
+    0 9px 18px rgb(159 33 30 / 0.16);
+  transform: translateY(0);
+}
+
+.qc-tactile-primary:hover {
+  box-shadow:
+    0 5px 0 var(--color-brand-800),
+    0 11px 20px rgb(159 33 30 / 0.18);
+  transform: translateY(-1px);
+}
+
+.qc-tactile-primary:active {
+  box-shadow:
+    0 1px 0 var(--color-brand-800),
+    0 4px 9px rgb(159 33 30 / 0.13);
+  transform: translateY(3px);
+}
+
+.qc-tactile-secondary {
+  box-shadow:
+    0 3px 0 var(--color-border-strong),
+    0 8px 16px rgb(20 42 58 / 0.09);
+  transform: translateY(0);
+}
+
+.qc-tactile-secondary:hover {
+  box-shadow:
+    0 4px 0 var(--color-border-strong),
+    0 10px 18px rgb(20 42 58 / 0.11);
+  transform: translateY(-1px);
+}
+
+.qc-tactile-secondary:active {
+  box-shadow: 0 1px 0 var(--color-border-strong);
+  transform: translateY(2px);
+}
+
+.qc-tactile-danger {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 82%, black);
+  box-shadow:
+    0 4px 0 color-mix(in srgb, var(--color-danger) 72%, black),
+    0 9px 18px rgb(113 35 28 / 0.16);
+}
+
+.qc-tactile-danger:active {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-danger) 72%, black);
+  transform: translateY(3px);
+}
+
+button:disabled.qc-tactile-primary,
+button:disabled.qc-tactile-secondary,
+button:disabled.qc-tactile-danger {
+  box-shadow: none;
+  transform: none;
 }
 
 /* --- Animaciones compartidas --------------------------------------------- */
@@ -130,5 +215,42 @@ body {
   .animate-rise,
   .animate-savings {
     animation: none;
+  }
+
+  .qc-tactile-primary,
+  .qc-tactile-secondary,
+  .qc-tactile-danger {
+    transition: none;
+  }
+}
+
+.qc-shopping-paper {
+  position: relative;
+  background-color: #fffdf5;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 47px,
+    rgb(152 222 239 / 0.28) 48px
+  );
+}
+
+.qc-shopping-paper::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 1.1rem;
+  width: 1px;
+  background: rgb(233 52 43 / 0.22);
+  pointer-events: none;
+}
+
+.qc-shopping-paper > * {
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .qc-shopping-paper::before {
+    left: 1.6rem;
   }
 }

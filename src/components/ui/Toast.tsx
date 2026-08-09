@@ -31,7 +31,7 @@ export type ToastProps = {
 
 const TONE: Record<ToastTone, { accent: string; icon: React.ReactNode }> = {
   neutral: { accent: "text-ink-muted", icon: <InfoIcon className="size-4.5" /> },
-  success: { accent: "text-brand-600", icon: <CheckIcon className="size-4.5" /> },
+  success: { accent: "text-grade-a", icon: <CheckIcon className="size-4.5" /> },
   warning: { accent: "text-warning", icon: <AlertIcon className="size-4.5" /> },
   critical: { accent: "text-danger", icon: <AlertIcon className="size-4.5" /> },
   info: { accent: "text-info", icon: <InfoIcon className="size-4.5" /> },
@@ -109,7 +109,7 @@ export function Toast({ toast, onDismiss, className }: ToastProps) {
         onClick={dismiss}
         aria-label="Cerrar aviso"
         className={cn(
-          "-mr-1 -mt-0.5 grid size-7 shrink-0 place-items-center rounded-control text-ink-faint",
+          "-mr-1 -mt-0.5 grid size-7 shrink-0 place-items-center rounded-button text-ink-faint",
           "transition-colors duration-150 hover:bg-surface-sunken hover:text-ink",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600",
         )}

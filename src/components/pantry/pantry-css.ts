@@ -94,6 +94,17 @@ export const PANTRY_CSS = `
 }
 .qc-box > svg { display: block; overflow: visible; }
 .qc-box polygon, .qc-box .qc-box-label { pointer-events: auto; }
+.qc-product-artifact {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  width: 42px;
+  height: 42px;
+  transform: translateX(-50%);
+  color: color-mix(in oklab, var(--qc-face) 72%, black);
+  pointer-events: auto;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.12);
+}
 .qc-box:hover, .qc-box:focus-within { z-index: 40; }
 
 .qc-box-shadow { fill: var(--color-ink); opacity: 0.16; }

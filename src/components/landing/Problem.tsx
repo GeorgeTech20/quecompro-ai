@@ -1,72 +1,116 @@
-const PROBLEMS = [
+"use client";
+
+import { motion, useReducedMotion } from "motion/react";
+
+import { Container, Section, SectionHead } from "./sections/Section";
+import { SECTION, reveal } from "./sections/theme";
+
+/* --------------------------------------------------------------------------
+   El problema. Primera sección del mundo crema: acá aterriza la bajada de
+   color desde el papel de la boleta.
+
+   Cuatro tarjetas con el número gigante al fondo. La tercera —la del mes que
+   se va— va invertida en verde profundo: es la que duele y además adelanta el
+   color al que baja la página.
+-------------------------------------------------------------------------- */
+
+type Item = {
+  n: string;
+  title: string;
+  body: string;
+  invert: boolean;
+};
+
+const PROBLEMS: readonly Item[] = [
   {
     n: "01",
-    title: "Se pierde la boleta",
-    body: "Compraste, pagaste y a los tres días nadie sabe cuánto fue. El mes se arma solo, sin que nadie lo mire.",
-    tint: "bg-brand-50 dark:bg-brand-900/35",
-    number: "text-brand-600/25 dark:text-brand-300/25",
+    title: "Se pierde la boleta.",
+    body: "Compraste, pagaste, y a los tres días nadie sabe cuánto fue. El mes se arma solo, sin que nadie lo mire.",
+    invert: false,
   },
   {
     n: "02",
-    title: "Compran dos veces lo mismo",
+    title: "Compran dos veces lo mismo.",
     body: "Tú traes el arroz, tu roomie trae el arroz. Ahora hay diez kilos de arroz y falta el aceite.",
-    tint: "bg-lime-soft dark:bg-lime-accent/10",
-    number: "text-brand-700/25 dark:text-lime-accent/25",
+    invert: false,
   },
   {
     n: "03",
-    title: "El mes se va sin saber en qué",
-    body: "No fue un gasto grande: fueron treinta chiquitos. Para cuando te das cuenta ya no queda nada.",
-    tint: "bg-grade-c/10 dark:bg-grade-c/15",
-    number: "text-grade-c/35",
+    title: "El mes se va sin saber en qué.",
+    body: "No fue un gasto grande: fueron treinta chiquitos. Para cuando te das cuenta, ya no queda nada.",
+    invert: true,
   },
   {
     n: "04",
-    title: "Nadie coordina con el roomie",
+    title: "Nadie coordina.",
     body: "La lista está en un chat, en un papel de la refri y en la cabeza de alguien. Nunca en el mismo sitio.",
-    tint: "bg-surface-sunken dark:bg-surface",
-    number: "text-ink-faint/30",
+    invert: false,
   },
-] as const;
+];
 
 export function Problem() {
-  return (
-    <section
-      id="problema"
-      className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-20 sm:px-8 lg:py-24"
-    >
-      <div className="max-w-2xl">
-        <p className="text-brand-600 text-sm font-medium">El problema</p>
-        <h2 className="text-ink mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Vivir con alguien no complica la comida. Complica la plata.
-        </h2>
-        <p className="text-ink-muted mt-4 text-base leading-relaxed">
-          Cuatro cosas que pasan en toda casa compartida del Perú, todos los
-          meses, sin falta.
-        </p>
-      </div>
+  const reduced = useReducedMotion() ?? false;
 
-      <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PROBLEMS.map((item) => (
-          <li
-            key={item.n}
-            className={`rounded-sheet border-border-subtle relative flex min-h-56 flex-col justify-end overflow-hidden border p-6 ${item.tint}`}
-          >
-            <span
-              aria-hidden="true"
-              className={`absolute -top-3 right-3 text-8xl leading-none font-semibold tracking-tighter ${item.number}`}
+  return (
+    <Section
+      id="problema"
+      tone="cream"
+      fadeFrom={SECTION.paper}
+      fadeHeight="clamp(96px, 16vw, 220px)"
+      aria-labelledby="problema-titulo"
+    >
+      <Container className="pt-24 pb-20 sm:pt-32 lg:pt-40 lg:pb-28">
+        <SectionHead
+          id="problema-titulo"
+          eyebrow="El problema"
+          title={
+            <>
+              Vivir con alguien no complica la comida.{" "}
+              <span style={{ color: "var(--qc-green)" }}>Complica la plata.</span>
+            </>
+          }
+          titleClassName="max-w-[24ch]"
+        />
+
+        <ul className="mt-14 grid gap-4 sm:grid-cols-2 lg:mt-20 lg:grid-cols-4">
+          {PROBLEMS.map((item, index) => (
+            <motion.li
+              key={item.n}
+              {...reveal(index, reduced)}
+              className="relative flex min-h-[15rem] flex-col justify-end overflow-hidden rounded-[20px] border p-6 sm:min-h-[17rem] lg:p-7"
+              style={{
+                backgroundColor: item.invert ? "var(--qc-green)" : "var(--qc-card)",
+                borderColor: item.invert ? "transparent" : "var(--qc-line-soft)",
+                color: item.invert ? "var(--qc-on-green)" : "var(--qc-ink)",
+                boxShadow: item.invert ? "var(--qc-shadow)" : "none",
+              }}
             >
-              {item.n}
-            </span>
-            <h3 className="text-ink relative text-lg font-semibold tracking-tight">
-              {item.title}
-            </h3>
-            <p className="text-ink-muted relative mt-2 text-sm leading-relaxed">
-              {item.body}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
+              <span
+                aria-hidden="true"
+                className="qc-serif pointer-events-none absolute -top-6 -right-1 text-[8.5rem] leading-none tracking-tighter select-none"
+                style={{
+                  color: item.invert ? "var(--qc-lime)" : "var(--qc-green)",
+                  opacity: item.invert ? 0.22 : 0.11,
+                }}
+              >
+                {item.n}
+              </span>
+
+              <h3 className="relative text-[17px] leading-snug font-semibold tracking-[-0.01em]">
+                {item.title}
+              </h3>
+              <p
+                className="relative mt-2.5 text-sm leading-relaxed"
+                style={{
+                  color: item.invert ? "var(--qc-on-green-soft)" : "var(--qc-ink-soft)",
+                }}
+              >
+                {item.body}
+              </p>
+            </motion.li>
+          ))}
+        </ul>
+      </Container>
+    </Section>
   );
 }

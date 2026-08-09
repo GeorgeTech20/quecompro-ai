@@ -4,13 +4,12 @@ import { Fragment } from "react";
 
 import { HealthChip, Money } from "@/components/ui";
 
-import { BoxArt, IsoBox } from "./IsoBox";
+import { IsoBox, ProductArtifact } from "./IsoBox";
 import {
   boardCenter,
   boardLeftCorner,
   boardShape,
   boardThicknessFor,
-  boxHeight,
   cabinetShell,
   GUTTER,
   SCENE_H,
@@ -189,7 +188,7 @@ function FlatBox({
         selected ? "border-brand-600 ring-1 ring-brand-200" : "border-border-subtle",
       ].join(" ")}
     >
-      <BoxArt height={boxHeight(item.qty)} />
+      <ProductArtifact item={item} className="aspect-square w-full max-w-28 bg-surface-sunken" />
       <span className="line-clamp-2 text-center text-[12px] leading-tight font-medium text-ink">
         {item.name}
       </span>

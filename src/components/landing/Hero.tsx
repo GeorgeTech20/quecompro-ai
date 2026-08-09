@@ -55,23 +55,11 @@ export function Hero() {
 
       <div className="relative mx-auto w-full max-w-[1180px] px-4 pt-6 pb-6 sm:px-6 lg:pt-8">
         <div className="qc-in text-center">
-          <p
-            className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium tracking-wide sm:text-xs"
-            style={{ backgroundColor: HERO.cream, color: HERO.ink }}
-          >
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: HERO.red }}
-            />
-            Proyecto de hackathon · hecho en Lima
-          </p>
-
           {/* Una sola línea, ancho completo: el titular tiene que leerse de un
               golpe y dominar la pantalla. El mínimo del clamp está calculado
               para que quepa a 320 px sin desbordar. */}
           <h1
-            className="mt-3 font-black whitespace-nowrap"
+            className="font-black whitespace-nowrap"
             style={{
               color: HERO.red,
               fontSize: "clamp(2.35rem, 8.6vw, 9.5rem)",
@@ -86,9 +74,8 @@ export function Hero() {
             className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-balance sm:text-lg"
             style={{ color: HERO.ink }}
           >
-            <span className="font-semibold">La despensa viva de tu casa.</span> El
-            carrito compartido con tu pareja o tus roomies, y una IA en el mismo
-            canal.
+            Lista de compras compartida, precios de supermercados y una IA para
+            decidir qué comprar y cocinar.
           </p>
 
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -96,7 +83,7 @@ export function Hero() {
               href="/login"
               size="lg"
               className="qc-cta"
-              style={{ backgroundColor: HERO.ink, color: "#fff" }}
+              style={{ backgroundColor: HERO.red, color: "#fff" }}
             >
               Empezar gratis
             </CtaLink>

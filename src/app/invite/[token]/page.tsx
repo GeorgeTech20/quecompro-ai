@@ -124,12 +124,17 @@ function InviteFrame({ children }: { children: React.ReactNode }) {
         href="/"
         className="text-xl font-semibold tracking-tight text-ink focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        QuéCompro<span className="text-brand-600">.app</span>
+        QuéComproo
       </Link>
 
-      <Card padding="md" className="mt-8 w-full max-w-md">
-        {children}
-      </Card>
+      <div className="mt-8 grid w-full max-w-4xl overflow-hidden rounded-panel border border-border-subtle bg-surface shadow-raised md:grid-cols-[0.85fr_1.15fr]">
+        <div className="relative hidden min-h-[28rem] overflow-hidden bg-brand-50 md:block">
+          <img src="/hero/onboarding-food.png" alt="Mesa clara con huevos y pan" className="absolute inset-0 size-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent" />
+          <p className="absolute inset-x-6 bottom-6 text-lg font-medium leading-snug text-white">Las mejores compras se hacen en equipo.</p>
+        </div>
+        <Card padding="md" className="rounded-none border-0 shadow-none sm:p-8">{children}</Card>
+      </div>
     </div>
   );
 }
@@ -142,7 +147,7 @@ function InvalidInvite() {
       description="El enlace venció o la casa cerró las invitaciones. Pídele a quien te invitó que te mande uno nuevo desde Roomies."
       action={
         <LinkButton href="/" variant="secondary">
-          Ver qué es QuéCompro.app
+          Ver qué es QuéComproo
         </LinkButton>
       }
     />

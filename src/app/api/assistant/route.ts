@@ -173,6 +173,16 @@ async function runTool(
       const args = call.args as ToolArgs["get_live_prices"];
       const anchor = args.itemId ?? args.productKey;
 
+      await publishChatEvent(
+        householdId,
+        {
+          type: "assistant-thinking",
+          stage: "sources",
+          hint: "Consultando Tottus, Plaza Vea, Metro y Wong…",
+        },
+        { ephemeral: true },
+      );
+
       await publishCartEvent(
         householdId,
         { type: "price-request", itemId: anchor, productKey: args.productKey, by: "assistant" },
@@ -190,7 +200,9 @@ async function runTool(
       const best = cheapestQuote(lookup.quotes);
       return {
         result: { quotes: lookup.quotes, cheapest: best, origin: lookup.origin, note: lookup.note ?? null },
-        actions: [],
+        actions: [
+          { kind: "price-check", productKey: args.productKey, quotes: lookup.quotes },
+        ],
       };
     }
 
@@ -237,11 +249,24 @@ export async function POST(request: Request): Promise<Response> {
   publishActivity(householdId, "thinking");
   await publishChatEvent(
     householdId,
-    { type: "assistant-thinking", hint: "Revisando el carrito y los precios…" },
+    {
+      type: "assistant-thinking",
+      stage: "context",
+      hint: "Leyendo tu carrito, presupuesto y despensa…",
+    },
     { ephemeral: true },
   );
 
   const context = await buildAssistantContext(householdId, message);
+  await publishChatEvent(
+    householdId,
+    {
+      type: "assistant-thinking",
+      stage: "answer",
+      hint: "Preparando una respuesta con datos de tu casa…",
+    },
+    { ephemeral: true },
+  );
   const actions: AssistantAction[] = [];
   let text: string;
 

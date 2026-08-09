@@ -48,13 +48,27 @@ function SkipLink({ href, children }: { href: string; children: React.ReactNode 
 
 export function WelcomeForm({ defaultName }: { defaultName: string }) {
   const [state, action, pending] = useActionState<OnboardingState, FormData>(saveHouseName, IDLE);
+  const [occupation, setOccupation] = useState("");
+  const [goals, setGoals] = useState<string[]>([]);
+
+  const occupations = ["Desarrollo", "Diseño", "Estudios", "Hogar", "Otro"];
+  const goalOptions = ["Ahorrar", "Comer mejor", "Coordinar la casa"];
+
+  function toggleGoal(goal: string) {
+    setGoals((current) =>
+      current.includes(goal) ? current.filter((item) => item !== goal) : [...current, goal],
+    );
+  }
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form action={action} className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">¿Cómo le decimos a tu casa?</h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-          Es el nombre que van a ver tus roomies. «Depa de Miraflores», «Casa», lo que sea.
+        <p className="text-sm font-medium text-brand-700">Bienvenido a QuéComproo</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink">
+          Hagamos que comprar se sienta fácil.
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+          Cuéntanos lo mínimo para adaptar precios, recetas y recordatorios a tu rutina.
         </p>
       </div>
 
@@ -68,6 +82,52 @@ export function WelcomeForm({ defaultName }: { defaultName: string }) {
         required
         inputSize="lg"
       />
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium text-ink">¿Qué te describe mejor?</legend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {occupations.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={occupation === option}
+              onClick={() => setOccupation(option)}
+              className={cn(
+                "min-h-11 rounded-button border px-3 text-sm font-medium transition-colors active:scale-[0.98]",
+                occupation === option
+                  ? "border-brand-600 bg-brand-50 text-brand-800"
+                  : "border-border-strong bg-surface text-ink-muted hover:bg-surface-sunken hover:text-ink",
+              )}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+        <input type="hidden" name="occupation" value={occupation} />
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium text-ink">¿Qué quieres mejorar?</legend>
+        <div className="flex flex-wrap gap-2">
+          {goalOptions.map((goal) => (
+            <button
+              key={goal}
+              type="button"
+              aria-pressed={goals.includes(goal)}
+              onClick={() => toggleGoal(goal)}
+              className={cn(
+                "min-h-10 rounded-full border px-4 text-sm font-medium transition-colors active:scale-[0.98]",
+                goals.includes(goal)
+                  ? "border-brand-600 bg-brand-600 text-white"
+                  : "border-border-strong bg-surface text-ink-muted hover:bg-surface-sunken hover:text-ink",
+              )}
+            >
+              {goal}
+            </button>
+          ))}
+        </div>
+        <input type="hidden" name="shopping_goals" value={goals.join(",")} />
+      </fieldset>
 
       <StepError state={state} />
 

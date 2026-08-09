@@ -5,15 +5,27 @@ import { auth } from "@clerk/nextjs/server";
 import {
   addCartItem,
   getHouseholdCart,
+  getHouseholdCartItem,
   getProfileByClerkId,
   getProductById,
   isMember,
+  recordMarketPrice,
   removeCartItem,
   searchProducts,
+  setCartItemPrice,
+  setCartItemPurchased,
+  setCartItemNote,
   setCartItemQty,
 } from "@/lib/data";
-import type { CartItemRow, HealthGrade, ProductRow, ProfileRow } from "@/types/db";
+import type {
+  CartItemRow,
+  HealthGrade,
+  MarketPriceRow,
+  ProductRow,
+  ProfileRow,
+} from "@/types/db";
 import type { CartItemPayload } from "@/lib/realtime/channels";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
  * Escrituras del carrito.
@@ -48,6 +60,20 @@ export type RemoveItemResult =
 
 export type SetQtyResult =
   | { ok: true; itemId: string; qty: number; total: number }
+  | ActionError;
+
+export type SetNoteResult =
+  | { ok: true; itemId: string; note: string }
+  | ActionError;
+
+export type SetPurchasedResult =
+  | {
+      ok: true;
+      itemId: string;
+      purchasedAt?: string;
+      purchasedBy?: { id: string; name: string; avatarUrl?: string | null };
+      purchasePhotoUrl?: string;
+    }
   | ActionError;
 
 export type SwapItemResult =
@@ -111,6 +137,8 @@ function toPayload(row: CartItemRow, profile: ProfileRow): CartItemPayload {
     store: row.store ?? undefined,
     category: row.category ?? undefined,
     healthGrade: row.health_grade ?? undefined,
+    note: row.note ?? undefined,
+    addedAt: row.created_at,
     addedBy: {
       id: profile.id,
       name: profile.full_name ?? "Alguien de la casa",
@@ -118,6 +146,15 @@ function toPayload(row: CartItemRow, profile: ProfileRow): CartItemPayload {
     },
   };
 }
+
+const PHOTO_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
 function toHit(product: ProductRow): CatalogHit {
   return {
@@ -201,6 +238,9 @@ export async function removeItemAction(
   try {
     const row = await removeCartItem(householdId, itemId);
     if (!row) return { ok: false, error: "Ese item ya no estaba en el carrito." };
+    if (row.purchase_photo_path) {
+      await supabaseAdmin().storage.from("purchase-evidence").remove([row.purchase_photo_path]);
+    }
 
     const cart = await getHouseholdCart(householdId);
     return { ok: true, itemId, title: row.title, total: cart.total };
@@ -230,6 +270,122 @@ export async function setQtyAction(
     return { ok: true, itemId, qty: row.qty, total: cart.total };
   } catch (error) {
     return fail("qty", error);
+  }
+}
+
+export async function setNoteAction(
+  householdId: string,
+  itemId: string,
+  value: string,
+): Promise<SetNoteResult> {
+  const member = await requireMember(householdId);
+  if (isActionError(member)) return member;
+
+  const note = value.trim().slice(0, 280);
+  try {
+    const row = await setCartItemNote(householdId, itemId, note || null);
+    if (!row) return { ok: false, error: "Ese item ya no está en el carrito." };
+    return { ok: true, itemId, note: row.note ?? "" };
+  } catch (error) {
+    return fail("note", error);
+  }
+}
+
+/**
+ * Confirma una compra para toda la casa. La foto es opcional y queda en un
+ * bucket privado; el canal recibe una URL firmada temporal, nunca la ruta de
+ * service role.
+ */
+export async function setPurchasedAction(
+  householdId: string,
+  itemId: string,
+  purchased: boolean,
+  formData?: FormData,
+): Promise<SetPurchasedResult> {
+  const member = await requireMember(householdId);
+  if (isActionError(member)) return member;
+
+  try {
+    const current = await getHouseholdCartItem(householdId, itemId);
+    if (!current) return { ok: false, error: "Ese producto ya no está en la lista." };
+
+    const photo = formData?.get("photo");
+    let uploadedPath: string | null = null;
+    if (photo instanceof File && photo.size > 0) {
+      const extension = PHOTO_EXTENSIONS[photo.type];
+      if (!extension) return { ok: false, error: "Usa una foto JPG, PNG, WebP o HEIC." };
+      if (photo.size > MAX_PHOTO_BYTES) {
+        return { ok: false, error: "La foto pesa más de 8 MB." };
+      }
+      uploadedPath = `${householdId}/${itemId}/${crypto.randomUUID()}.${extension}`;
+      const upload = await supabaseAdmin()
+        .storage.from("purchase-evidence")
+        .upload(uploadedPath, await photo.arrayBuffer(), {
+          contentType: photo.type,
+          cacheControl: "3600",
+          upsert: false,
+        });
+      if (upload.error) throw upload.error;
+    }
+
+    const photoPath = purchased
+      ? (uploadedPath ?? current.purchase_photo_path)
+      : null;
+    const purchasedAt = purchased
+      ? (current.purchased_at ?? new Date().toISOString())
+      : null;
+    const purchasedBy = purchased
+      ? (current.purchased_by ?? member.profile.id)
+      : null;
+
+    let updated: CartItemRow | null;
+    try {
+      updated = await setCartItemPurchased(householdId, itemId, {
+        purchasedAt,
+        purchasedBy,
+        photoPath,
+      });
+    } catch (error) {
+      if (uploadedPath) {
+        await supabaseAdmin().storage.from("purchase-evidence").remove([uploadedPath]);
+      }
+      throw error;
+    }
+    if (!updated) return { ok: false, error: "Ese producto ya no está en la lista." };
+
+    const oldPath = current.purchase_photo_path;
+    if (oldPath && oldPath !== photoPath) {
+      await supabaseAdmin().storage.from("purchase-evidence").remove([oldPath]);
+    }
+
+    let purchasePhotoUrl: string | undefined;
+    if (photoPath) {
+      const signed = await supabaseAdmin()
+        .storage.from("purchase-evidence")
+        .createSignedUrl(photoPath, 60 * 60);
+      purchasePhotoUrl = signed.data?.signedUrl;
+    }
+
+    return {
+      ok: true,
+      itemId,
+      purchasedAt: updated.purchased_at ?? undefined,
+      purchasedBy: updated.purchased_at && updated.purchased_by === member.profile.id
+        ? {
+            id: member.profile.id,
+            name: member.profile.full_name ?? "Alguien de la casa",
+            avatarUrl: member.profile.avatar_url,
+          }
+        : undefined,
+      purchasePhotoUrl,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "error";
+    console.warn(`[cart:purchased] ${message}`);
+    if (message.includes("0006") || message.includes("purchase-evidence")) {
+      return { ok: false, error: "Aplica la migración 0006 para activar la compra en equipo." };
+    }
+    return { ok: false, error: "No pudimos actualizar la compra. Intenta otra vez." };
   }
 }
 
@@ -295,4 +451,105 @@ export async function swapItemAction(
   } catch (error) {
     return fail("swap", error);
   }
+}
+
+// --- precios de mercado (lo pagado de verdad) ------------------------------
+
+export type RecordMarketPriceInput = {
+  householdId: string;
+  itemId: string;
+  price: number;
+  unit?: string;
+  /** El mercado/plaza/puesto donde se compró, p. ej. "Mercado Central". */
+  market?: string;
+  /** El puesto dentro del mercado, p. ej. "Puesto 12". */
+  stall?: string;
+  /** La notita del usuario: "kilo de papa, bien roja". */
+  note?: string;
+};
+
+export type RecordMarketPriceResult =
+  | { ok: true; item: CartItemPayload; productKey: string; total: number }
+  | ActionError;
+
+export type PriceHistoryResult = { ok: true; history: MarketPriceRow[] } | ActionError;
+
+/**
+ * Registra el precio real pagado en el mercado y lo escribe sobre el item del
+ * carrito. El historial queda en `market_prices` para comparar "antes y ahora"
+ * y "este puesto vs el otro".
+ */
+export async function recordMarketPriceAction(
+  input: RecordMarketPriceInput,
+): Promise<RecordMarketPriceResult> {
+  const member = await requireMember(input.householdId);
+  if (isActionError(member)) return member;
+
+  if (!Number.isFinite(input.price) || input.price < 0) {
+    return { ok: false, error: "Ese precio no es válido." };
+  }
+
+  try {
+    // El item se relee de la base: el título de la fila es lo que se guarda
+    // como historia, no lo que manda el navegador.
+    const row = await getHouseholdCartItem(input.householdId, input.itemId);
+    if (!row) return { ok: false, error: "Ese item ya no está en el carrito." };
+
+    const product = row.product_id ? await getProductById(row.product_id) : null;
+    const productKey = product?.product_key ?? slugifyKey(row.title);
+
+    const updated = await setCartItemPrice(input.householdId, input.itemId, input.price);
+    if (!updated) return { ok: false, error: "Ese item ya no está en el carrito." };
+
+    await recordMarketPrice({
+      household_id: input.householdId,
+      cart_item_id: updated.id,
+      product_key: productKey,
+      title: updated.title,
+      unit: input.unit ?? updated.unit,
+      price: input.price,
+      market: input.market ?? null,
+      stall: input.stall ?? null,
+      note: input.note ?? null,
+      recorded_by: member.profile.id,
+    });
+
+    const cart = await getHouseholdCart(input.householdId);
+    return {
+      ok: true,
+      item: toPayload(updated, member.profile),
+      productKey,
+      total: cart.total,
+    };
+  } catch (error) {
+    return fail("record-market-price", error);
+  }
+}
+
+/** Historial de precios pagados para un producto o título libre. */
+export async function priceHistoryAction(
+  householdId: string,
+  productKey: string,
+): Promise<PriceHistoryResult> {
+  const member = await requireMember(householdId);
+  if (isActionError(member)) return member;
+
+  try {
+    const { getMarketPriceHistory } = await import("@/lib/data/market-prices");
+    const history = await getMarketPriceHistory(householdId, productKey);
+    return { ok: true, history };
+  } catch (error) {
+    return fail("price-history", error);
+  }
+}
+
+/** "Pollo entero" → "pollo-entero". Misma canónica que el cliente del carrito. */
+function slugifyKey(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
 }

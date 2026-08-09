@@ -18,9 +18,38 @@ const HOUSEHOLD_COLUMNS =
   "id, name, monthly_budget, currency, invite_token, created_at, updated_at";
 
 const PROFILE_COLUMNS =
+  "id, clerk_id, email, full_name, avatar_url, whatsapp_phone, occupation, shopping_goals, diet_tags, allergies, active_household_id, created_at, updated_at";
+const LEGACY_PROFILE_COLUMNS =
   "id, clerk_id, email, full_name, avatar_url, whatsapp_phone, diet_tags, allergies, active_household_id, created_at, updated_at";
 
 const MEMBERSHIP_COLUMNS = "id, household_id, user_id, role, joined_at";
+
+let onboardingColumnsAvailable: boolean | undefined;
+
+async function profileColumns(): Promise<string> {
+  if (onboardingColumnsAvailable !== undefined) {
+    return onboardingColumnsAvailable ? PROFILE_COLUMNS : LEGACY_PROFILE_COLUMNS;
+  }
+
+  const probe = await supabaseAdmin()
+    .from("profiles")
+    .select("occupation, shopping_goals")
+    .limit(0);
+  onboardingColumnsAvailable = !probe.error;
+  if (!onboardingColumnsAvailable) {
+    console.warn("[data:profiles] migración 0004 pendiente; usando columnas compatibles.");
+  }
+  return onboardingColumnsAvailable ? PROFILE_COLUMNS : LEGACY_PROFILE_COLUMNS;
+}
+
+function normalizeProfile(row: ProfileRow | null): ProfileRow | null {
+  if (!row) return null;
+  return {
+    ...row,
+    occupation: row.occupation ?? null,
+    shopping_goals: row.shopping_goals ?? [],
+  };
+}
 
 /** Token corto y url-safe para /invite/[token]. */
 export function newInviteToken(): string {
@@ -30,13 +59,14 @@ export function newInviteToken(): string {
 // --- perfiles --------------------------------------------------------------
 
 export async function getProfileByClerkId(clerkId: string): Promise<ProfileRow | null> {
+  const columns = await profileColumns();
   const result = await supabaseAdmin()
     .from("profiles")
-    .select(PROFILE_COLUMNS)
+    .select(columns)
     .eq("clerk_id", clerkId)
     .maybeSingle();
 
-  return unwrap<ProfileRow | null>(result, "getProfileByClerkId");
+  return normalizeProfile(unwrap<ProfileRow | null>(result, "getProfileByClerkId"));
 }
 
 /**
@@ -44,6 +74,8 @@ export async function getProfileByClerkId(clerkId: string): Promise<ProfileRow |
  * corre después del login: `clerk_id` es la clave natural.
  */
 export async function upsertProfile(input: ProfileUpsert): Promise<ProfileRow> {
+  const columns = await profileColumns();
+  const supportsOnboarding = columns === PROFILE_COLUMNS;
   const result = await supabaseAdmin()
     .from("profiles")
     .upsert(
@@ -53,6 +85,12 @@ export async function upsertProfile(input: ProfileUpsert): Promise<ProfileRow> {
         full_name: input.full_name ?? null,
         avatar_url: input.avatar_url ?? null,
         ...(input.whatsapp_phone === undefined ? {} : { whatsapp_phone: input.whatsapp_phone }),
+        ...(!supportsOnboarding || input.occupation === undefined
+          ? {}
+          : { occupation: input.occupation }),
+        ...(!supportsOnboarding || input.shopping_goals === undefined
+          ? {}
+          : { shopping_goals: input.shopping_goals }),
         ...(input.diet_tags === undefined ? {} : { diet_tags: input.diet_tags }),
         ...(input.allergies === undefined ? {} : { allergies: input.allergies }),
         ...(input.active_household_id === undefined
@@ -61,16 +99,18 @@ export async function upsertProfile(input: ProfileUpsert): Promise<ProfileRow> {
       },
       { onConflict: "clerk_id" },
     )
-    .select(PROFILE_COLUMNS)
+    .select(columns)
     .single();
 
-  return unwrap<ProfileRow>(result, "upsertProfile");
+  return normalizeProfile(unwrap<ProfileRow>(result, "upsertProfile")) as ProfileRow;
 }
 
 export type ProfilePreferences = {
   full_name?: string | null;
   avatar_url?: string | null;
   whatsapp_phone?: string | null;
+  occupation?: string | null;
+  shopping_goals?: string[];
   diet_tags?: string[];
   allergies?: string[];
 };
@@ -79,28 +119,46 @@ export async function updateProfilePreferences(
   profileId: string,
   patch: ProfilePreferences,
 ): Promise<ProfileRow | null> {
+  const columns = await profileColumns();
+  const supportsOnboarding = columns === PROFILE_COLUMNS;
+  const persistedPatch = supportsOnboarding
+    ? patch
+    : Object.fromEntries(
+        Object.entries(patch).filter(([key]) => key !== "occupation" && key !== "shopping_goals"),
+      );
+
+  if (Object.keys(persistedPatch).length === 0) {
+    const current = await supabaseAdmin()
+      .from("profiles")
+      .select(columns)
+      .eq("id", profileId)
+      .maybeSingle();
+    return normalizeProfile(unwrap<ProfileRow | null>(current, "updateProfilePreferences:compat"));
+  }
+
   const result = await supabaseAdmin()
     .from("profiles")
-    .update(patch)
+    .update(persistedPatch)
     .eq("id", profileId)
-    .select(PROFILE_COLUMNS)
+    .select(columns)
     .maybeSingle();
 
-  return unwrap<ProfileRow | null>(result, "updateProfilePreferences");
+  return normalizeProfile(unwrap<ProfileRow | null>(result, "updateProfilePreferences"));
 }
 
 export async function setActiveHousehold(
   profileId: string,
   householdId: string | null,
 ): Promise<ProfileRow | null> {
+  const columns = await profileColumns();
   const result = await supabaseAdmin()
     .from("profiles")
     .update({ active_household_id: householdId })
     .eq("id", profileId)
-    .select(PROFILE_COLUMNS)
+    .select(columns)
     .maybeSingle();
 
-  return unwrap<ProfileRow | null>(result, "setActiveHousehold");
+  return normalizeProfile(unwrap<ProfileRow | null>(result, "setActiveHousehold"));
 }
 
 // --- casas -----------------------------------------------------------------

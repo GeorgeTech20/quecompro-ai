@@ -32,6 +32,8 @@ export type CartItemPayload = {
   store?: string;
   category?: string;
   healthGrade?: HealthGrade;
+  /** Nota breve compartida: madurez, marca preferida o indicación del mercado. */
+  note?: string;
   /** Id de catálogo, si el item salió del catálogo y no de texto libre. */
   productId?: string | null;
   /**
@@ -42,12 +44,18 @@ export type CartItemPayload = {
    */
   productKey?: string | null;
   addedBy?: { id: string; name: string; avatarUrl?: string | null };
+  addedAt?: string;
+  purchasedAt?: string;
+  purchasedBy?: { id: string; name: string; avatarUrl?: string | null };
+  purchasePhotoUrl?: string;
 };
 
 export type PriceQuote = {
   store: string;
   price: number;
   unit: string;
+  /** Búsqueda oficial o ficha verificada para continuar la compra en la tienda. */
+  url?: string;
   /** ISO string. Marca si vino de scrape real o del dataset. */
   fetchedAt: string;
   source: "live" | "dataset";
@@ -59,6 +67,14 @@ export type CartEvent =
   | { type: "item-added"; item: CartItemPayload; total: number }
   | { type: "item-removed"; itemId: string; title: string; total: number }
   | { type: "item-qty"; itemId: string; qty: number; total: number }
+  | { type: "item-note"; itemId: string; note: string }
+  | {
+      type: "item-purchased";
+      itemId: string;
+      purchasedAt?: string;
+      purchasedBy?: { id: string; name: string; avatarUrl?: string | null };
+      purchasePhotoUrl?: string;
+    }
   | { type: "cart-cleared"; total: number }
   /** La IA evaluó un item recién agregado. */
   | {
@@ -84,6 +100,11 @@ export type CartEvent =
   | { type: "price-snapshot"; itemId: string; productKey: string; quotes: PriceQuote[] }
   /** Alguien pidió verificar precios; la UI muestra el spinner en vivo. */
   | { type: "price-request"; itemId: string; productKey: string; by: string }
+  /**
+   * Alguien registró el precio real pagado en el mercado (puesto, plaza,
+   * bodega del barrio). El item viaja completo porque su `price` cambió.
+   */
+  | { type: "item-price-registered"; item: CartItemPayload; total: number }
   /** Un roomie mandó su compra por WhatsApp. */
   | { type: "whatsapp-sync"; from: string; items: CartItemPayload[]; total: number };
 
@@ -92,14 +113,19 @@ export type CartEvent =
 export type ChatEvent =
   | { type: "user-message"; text: string; author: { id: string; name: string; avatarUrl?: string | null } }
   | { type: "assistant-message"; text: string; actions?: AssistantAction[] }
-  | { type: "assistant-thinking"; hint: string }
+  | {
+      type: "assistant-thinking";
+      hint: string;
+      stage?: "context" | "sources" | "answer";
+    }
   | { type: "recipe-suggestion"; recipe: RecipeSuggestion };
 
 export type AssistantAction =
   | { kind: "add-item"; title: string; price: number; qty: number; productId?: string }
   | { kind: "swap-item"; itemId: string; toProductId: string; toTitle: string; savings: number }
   | { kind: "set-budget"; monthly: number }
-  | { kind: "accept-recipe"; recipeSlug: string };
+  | { kind: "accept-recipe"; recipeSlug: string }
+  | { kind: "price-check"; productKey: string; quotes: PriceQuote[] };
 
 export type RecipeSuggestion = {
   slug: string;

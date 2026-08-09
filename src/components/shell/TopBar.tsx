@@ -31,8 +31,8 @@ export function TopBar({
   const screen = labelForPath(pathname);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border-subtle bg-surface/95 backdrop-blur">
-      <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 bg-canvas/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+      <div className="flex h-12 items-center gap-3 bg-transparent px-0 sm:h-12">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Link
             href="/app"
@@ -50,7 +50,7 @@ export function TopBar({
           />
 
           {screen ? (
-            <span className="truncate text-sm text-ink-muted sm:hidden">· {screen}</span>
+            <span className="hidden truncate text-sm text-ink-muted sm:inline">/ {screen}</span>
           ) : null}
         </div>
 
@@ -76,7 +76,7 @@ function InboxBell({ userId }: { userId: string }) {
       href="/app/notifications"
       aria-label={pending > 0 ? `Avisos: ${pending} sin leer` : "Avisos"}
       className={cn(
-        "relative grid size-9 place-items-center rounded-control text-ink-muted",
+        "relative grid size-9 place-items-center rounded-button text-ink-muted",
         "transition-colors duration-150 hover:bg-surface-sunken hover:text-ink",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600",
       )}

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { ToastProvider } from "@/components/ui";
+import { PortalBoundary } from "@/components/providers/PortalBoundary";
 import { RealtimeProvider } from "@/components/providers/realtime-provider";
 
 import { BottomBar } from "./BottomBar";
@@ -48,14 +49,19 @@ export function AppShell({
     >
       <CartCountProvider householdId={householdId} initialCount={initialCartCount}>
         <ToastProvider placement="bottom-right">
-          <div className="flex min-h-dvh flex-1">
-            <SideNav />
+          <div className="flex min-h-dvh flex-1 gap-0 bg-[#e9eaec]">
+            <SideNav householdName={householdName} />
 
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col bg-surface">
               <TopBar householdName={householdName} userId={userId} />
 
-              {/* El padding inferior deja sitio a la barra del móvil. */}
-              <main className="min-w-0 flex-1 pb-20 sm:pb-0">{children}</main>
+              {/* El padding inferior deja sitio a la píldora del móvil. */}
+              {/* PortalBoundary aquí y no más arriba: si una pantalla revienta,
+                  degrada a una tarjeta suave pero la navegación sigue viva para
+                  moverse a otra parte y volver. */}
+              <main className="min-w-0 flex-1 overflow-hidden bg-canvas pb-24 sm:pb-6 lg:rounded-tl-[34px]">
+                <PortalBoundary>{children}</PortalBoundary>
+              </main>
             </div>
 
             <BottomBar />

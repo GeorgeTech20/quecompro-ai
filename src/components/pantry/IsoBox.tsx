@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  IconApple,
+  IconBottle,
+  IconBread,
+  IconCookie,
+  IconEgg,
+  IconLeaf,
+  IconMeat,
+  IconMilk,
+  IconPackage,
+} from "@tabler/icons-react";
+
 import { formatPEN } from "@/components/ui";
 
 import {
@@ -12,6 +24,33 @@ import {
 } from "./iso";
 import { boxAriaLabel, qtyLabel, whenLabel } from "./labels";
 import type { PantryItem } from "./types";
+
+function iconFor(item: PantryItem) {
+  const name = item.name.toLowerCase();
+  const category = item.categoryLabel.toLowerCase();
+  if (name.includes("huevo")) return IconEgg;
+  if (name.includes("pan")) return IconBread;
+  if (name.includes("leche") || name.includes("yogur")) return IconMilk;
+  if (category.includes("fruta")) return IconApple;
+  if (category.includes("verdura")) return IconLeaf;
+  if (category.includes("carne")) return IconMeat;
+  if (category.includes("bebida")) return IconBottle;
+  if (category.includes("snack")) return IconCookie;
+  return IconPackage;
+}
+
+export function ProductArtifact({ item, className = "" }: { item: PantryItem; className?: string }) {
+  const Icon = iconFor(item);
+  return (
+    <span className={`grid place-items-center overflow-hidden rounded-card bg-white/90 text-ink ${className}`}>
+      {item.imageUrl ? (
+        <img src={item.imageUrl} alt="" className="size-full object-contain p-1" />
+      ) : (
+        <Icon className="size-1/2" strokeWidth={1.55} aria-hidden="true" />
+      )}
+    </span>
+  );
+}
 
 /**
  * La cajita del producto.
@@ -112,6 +151,7 @@ export function IsoBox({ item, slot, shelfIndex, order, selected, onSelect }: Is
       }}
     >
       <BoxArt height={height} />
+      <ProductArtifact item={item} className="qc-product-artifact" />
       <span className="qc-box-label">{item.name}</span>
       <BoxPopover item={item} />
     </button>

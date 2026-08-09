@@ -12,7 +12,7 @@ export type BadgeProps = React.ComponentProps<"span"> & {
 
 const TONE: Record<BadgeTone, { chip: string; dot: string }> = {
   neutral: { chip: "bg-surface-sunken text-ink-muted border-border-subtle", dot: "bg-ink-faint" },
-  success: { chip: "bg-brand-50 text-brand-700 border-brand-200", dot: "bg-brand-600" },
+  success: { chip: "bg-grade-a/10 text-grade-a border-grade-a/25", dot: "bg-grade-a" },
   warning: { chip: "bg-warning/10 text-warning border-warning/25", dot: "bg-warning" },
   critical: { chip: "bg-danger/10 text-danger border-danger/25", dot: "bg-danger" },
   info: { chip: "bg-info/10 text-info border-info/25", dot: "bg-info" },
@@ -36,7 +36,7 @@ export function Badge({
     <span
       {...rest}
       className={cn(
-        "inline-flex items-center rounded-full border font-medium whitespace-nowrap",
+        "inline-flex items-center rounded-chip border font-medium whitespace-nowrap",
         TONE[tone].chip,
         SIZE[size],
         className,

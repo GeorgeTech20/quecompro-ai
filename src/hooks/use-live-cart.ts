@@ -6,12 +6,17 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 
 import {
   addItemAction,
+  recordMarketPriceAction,
   removeItemAction,
   setQtyAction,
+  setNoteAction,
+  setPurchasedAction,
   swapItemAction,
   type AddItemInput,
+  type RecordMarketPriceInput,
 } from "@/app/(app)/app/cart/actions";
 import { useToast } from "@/components/ui";
+import { prepareImageUpload } from "@/lib/images/prepare-upload";
 import {
   channels,
   type CartEvent,
@@ -47,6 +52,16 @@ export type LiveCartSeedItem = CartItemPayload & {
 
 export type LiveCartStatus = ChannelStatus;
 
+export type PurchaseFeedEntry = {
+  /** id del item comprado; una entrada por item, la última acción gana. */
+  itemId: string;
+  title: string;
+  /** ISO string. */
+  at: string;
+  by?: { id: string; name: string; avatarUrl?: string | null };
+  photoUrl?: string;
+};
+
 export type UseLiveCartResult = {
   items: CartItemPayload[];
   /** Recalculado desde los items, siempre. Nunca se copia del evento. */
@@ -58,6 +73,12 @@ export type UseLiveCartResult = {
   quotes: Record<string, PriceQuote[]>;
   /** Items con una verificación de precios en vuelo, en cualquier pantalla. */
   pricePending: Record<string, boolean>;
+  purchasePending: Record<string, boolean>;
+  /**
+   * Última actividad de compra por item, en orden cronológico inverso: el
+   * "chat de equipo" de quién compró qué, con foto cuando hay evidencia.
+   */
+  purchaseFeed: PurchaseFeedEntry[];
   /** El `total` del evento no cuadró con el nuestro: falta algo por llegar. */
   outOfSync: boolean;
   status: LiveCartStatus;
@@ -65,7 +86,10 @@ export type UseLiveCartResult = {
   addItem: (input: AddItemDraft) => Promise<void>;
   removeItem: (itemId: string) => void;
   setQty: (itemId: string, qty: number) => void;
+  setNote: (itemId: string, note: string) => Promise<void>;
+  setPurchased: (itemId: string, purchased: boolean, photo?: File) => Promise<void>;
   requestPrices: (itemId: string) => Promise<void>;
+  recordMarketPrice: (input: Omit<RecordMarketPriceInput, "householdId">) => Promise<void>;
   swapItem: (itemId: string, cheaper: NonNullable<CartVerdict["cheaper"]>) => Promise<void>;
 };
 
@@ -95,6 +119,8 @@ type CartState = {
   latestVerdictItemId: string | null;
   quotes: Record<string, PriceQuote[]>;
   pricePending: Record<string, boolean>;
+  purchasePending: Record<string, boolean>;
+  purchaseFeed: PurchaseFeedEntry[];
   productKeys: Record<string, string>;
   /** itemId → ms del borrado. Impide que un alta vieja resucite el item. */
   tombstones: Record<string, number>;
@@ -114,7 +140,17 @@ type CartAction =
   | { kind: "local-restore"; item: CartItemPayload; index: number }
   | { kind: "local-qty"; itemId: string; qty: number; at: number }
   | { kind: "local-verdict"; verdict: CartVerdict; at: number }
-  | { kind: "price-pending"; itemId: string; pending: boolean };
+  | { kind: "price-pending"; itemId: string; pending: boolean }
+  | { kind: "local-set-price"; item: CartItemPayload }
+  | { kind: "local-note"; itemId: string; note: string }
+  | {
+      kind: "local-purchased";
+      itemId: string;
+      purchasedAt?: string;
+      purchasedBy?: CartItemPayload["purchasedBy"];
+      purchasePhotoUrl?: string;
+      pending?: boolean;
+    };
 
 const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -130,6 +166,17 @@ export function slugifyKey(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+}
+
+const MAX_FEED = 30;
+
+/** Una entrada por item: si ya existía, la última acción la reemplaza. */
+function pushFeed(
+  feed: readonly PurchaseFeedEntry[],
+  entry: PurchaseFeedEntry,
+): PurchaseFeedEntry[] {
+  const rest = feed.filter((item) => item.itemId !== entry.itemId);
+  return [entry, ...rest].slice(0, MAX_FEED);
 }
 
 function emptyStamps(): Stamps {
@@ -157,6 +204,8 @@ export function seedCartState(seed: readonly LiveCartSeedItem[]): CartState {
     latestVerdictItemId: null,
     quotes: {},
     pricePending: {},
+    purchasePending: {},
+    purchaseFeed: [],
     productKeys,
     tombstones: {},
     clearedAt: 0,
@@ -232,6 +281,47 @@ function applyEvent(state: CartState, event: CartEvent, at: number): CartState {
       };
     }
 
+    case "item-note": {
+      if (!state.items.some((item) => item.id === event.itemId)) return state;
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === event.itemId ? { ...item, note: event.note || undefined } : item,
+        ),
+      };
+    }
+
+    case "item-purchased": {
+      if (!state.items.some((item) => item.id === event.itemId)) return state;
+      const purchasePending = { ...state.purchasePending };
+      delete purchasePending[event.itemId];
+      const bought = state.items.find((item) => item.id === event.itemId);
+      const entry: PurchaseFeedEntry = {
+        itemId: event.itemId,
+        title: bought?.title ?? "Un producto",
+        at: event.purchasedAt ?? new Date().toISOString(),
+        by: event.purchasedBy,
+        photoUrl: event.purchasePhotoUrl,
+      };
+      return {
+        ...state,
+        purchasePending,
+        purchaseFeed: event.purchasedAt ? pushFeed(state.purchaseFeed, entry) : state.purchaseFeed,
+        items: state.items.map((item) =>
+          item.id === event.itemId
+            ? {
+                ...item,
+                purchasedAt: event.purchasedAt,
+                purchasedBy: event.purchasedBy ?? item.purchasedBy,
+                purchasePhotoUrl: event.purchasedAt
+                  ? (event.purchasePhotoUrl ?? item.purchasePhotoUrl)
+                  : undefined,
+              }
+            : item,
+        ),
+      };
+    }
+
     case "cart-cleared": {
       // Solo se lleva lo que ya existía cuando se vació: un item agregado
       // después no puede desaparecer por un `cart-cleared` que llegó tarde.
@@ -268,6 +358,20 @@ function applyEvent(state: CartState, event: CartEvent, at: number): CartState {
         productKeys: { ...state.productKeys, [event.itemId]: event.productKey },
         pricePending,
         stamps: { ...state.stamps, quote: { ...state.stamps.quote, [event.itemId]: at } },
+      };
+    }
+
+    case "item-price-registered": {
+      const known = state.items.some((entry) => entry.id === event.item.id);
+      // Un precio no revive ni crea filas: solo ajusta la que ya existe.
+      if (!known) return state;
+      if (at < (state.stamps.add[event.item.id] ?? 0)) return state;
+      return {
+        ...state,
+        items: state.items.map((entry) =>
+          entry.id === event.item.id ? event.item : entry,
+        ),
+        hintedTotal: event.total,
       };
     }
 
@@ -371,6 +475,56 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, pricePending };
     }
 
+    case "local-set-price":
+      // Reemplazo en su sitio; el item completo viene del llamador.
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === action.item.id ? action.item : item,
+        ),
+      };
+
+    case "local-note":
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === action.itemId ? { ...item, note: action.note || undefined } : item,
+        ),
+      };
+
+    case "local-purchased": {
+      const purchasePending = { ...state.purchasePending };
+      if (action.pending) purchasePending[action.itemId] = true;
+      else delete purchasePending[action.itemId];
+      const bought = state.items.find((item) => item.id === action.itemId);
+      const entry: PurchaseFeedEntry = {
+        itemId: action.itemId,
+        title: bought?.title ?? "Un producto",
+        at: action.purchasedAt ?? new Date().toISOString(),
+        by: action.purchasedBy,
+        photoUrl: action.purchasePhotoUrl,
+      };
+      return {
+        ...state,
+        purchasePending,
+        purchaseFeed: action.purchasedAt
+          ? pushFeed(state.purchaseFeed, entry)
+          : state.purchaseFeed,
+        items: state.items.map((item) =>
+          item.id === action.itemId
+            ? {
+                ...item,
+                purchasedAt: action.purchasedAt,
+                purchasedBy: action.purchasedBy ?? item.purchasedBy,
+                purchasePhotoUrl: action.purchasedAt
+                  ? (action.purchasePhotoUrl ?? item.purchasePhotoUrl)
+                  : undefined,
+              }
+            : item,
+        ),
+      };
+    }
+
     default:
       return state;
   }
@@ -416,6 +570,7 @@ function readQuote(raw: unknown): PriceQuote | null {
     store: quote.store,
     price: quote.price,
     unit: typeof quote.unit === "string" ? quote.unit : "un",
+    url: typeof quote.url === "string" && /^https:\/\//.test(quote.url) ? quote.url : undefined,
     fetchedAt: typeof quote.fetchedAt === "string" ? quote.fetchedAt : new Date().toISOString(),
     // El origen no se maquilla: si no viene, se asume dataset.
     source: quote.source === "live" ? "live" : "dataset",
@@ -714,6 +869,93 @@ export function useLiveCart(
     };
   }, []);
 
+  // --- nota compartida -----------------------------------------------------
+
+  const setNote = useCallback(
+    async (itemId: string, note: string) => {
+      const current = stateRef.current.items.find((item) => item.id === itemId);
+      if (!current) return;
+
+      const previous = current.note ?? "";
+      const next = note.trim().slice(0, 280);
+      dispatch({ kind: "local-note", itemId, note: next });
+
+      const result = await setNoteAction(householdId, itemId, next).catch(() => null);
+      if (!result || !result.ok) {
+        dispatch({ kind: "local-note", itemId, note: previous });
+        toast({
+          title: "No se pudo guardar la nota",
+          description: result?.ok === false ? result.error : "Volvimos a la nota anterior.",
+          tone: "critical",
+        });
+        return;
+      }
+
+      publish({ type: "item-note", itemId, note: result.note });
+    },
+    [householdId, publish, toast],
+  );
+
+  // --- compra física compartida -------------------------------------------
+
+  const setPurchased = useCallback(
+    async (itemId: string, purchased: boolean, photo?: File) => {
+      const current = stateRef.current.items.find((item) => item.id === itemId);
+      if (!current) return;
+
+      dispatch({
+        kind: "local-purchased",
+        itemId,
+        purchasedAt: purchased ? (current.purchasedAt ?? new Date().toISOString()) : undefined,
+        purchasedBy: current.purchasedBy,
+        purchasePhotoUrl: current.purchasePhotoUrl,
+        pending: true,
+      });
+
+      const preparedPhoto = photo ? await prepareImageUpload(photo).catch(() => photo) : undefined;
+      const formData = preparedPhoto ? new FormData() : undefined;
+      if (preparedPhoto && formData) formData.set("photo", preparedPhoto);
+      const result = await setPurchasedAction(householdId, itemId, purchased, formData).catch(
+        () => null,
+      );
+
+      if (!result || !result.ok) {
+        dispatch({
+          kind: "local-purchased",
+          itemId,
+          purchasedAt: current.purchasedAt,
+          purchasedBy: current.purchasedBy,
+          purchasePhotoUrl: current.purchasePhotoUrl,
+          pending: false,
+        });
+        toast({
+          title: "No se pudo actualizar la compra",
+          description: result?.ok === false ? result.error : "Volvimos al estado anterior.",
+          tone: "critical",
+        });
+        return;
+      }
+
+      const event: Extract<CartEvent, { type: "item-purchased" }> = {
+        type: "item-purchased",
+        itemId,
+        purchasedAt: result.purchasedAt,
+        purchasedBy: result.purchasedBy ?? current.purchasedBy,
+        purchasePhotoUrl: result.purchasePhotoUrl ?? current.purchasePhotoUrl,
+      };
+      dispatch({
+        kind: "local-purchased",
+        itemId,
+        purchasedAt: event.purchasedAt,
+        purchasedBy: event.purchasedBy,
+        purchasePhotoUrl: event.purchasePhotoUrl,
+        pending: false,
+      });
+      publish(event);
+    },
+    [householdId, publish, toast],
+  );
+
   // --- precios -------------------------------------------------------------
 
   const requestPrices = useCallback(
@@ -768,6 +1010,40 @@ export function useLiveCart(
     [householdId, productKeyFor, toast],
   );
 
+  // --- precio pagado en el mercado ------------------------------------------
+
+  /**
+   * Registra lo que de verdad se pagó en el puesto/plaza. Optimista: la fila
+   * cambia al instante; si la escritura falla, se vuelve al precio anterior.
+   */
+  const recordMarketPrice = useCallback(
+    async (input: Omit<RecordMarketPriceInput, "householdId">) => {
+      const current = stateRef.current.items.find((entry) => entry.id === input.itemId);
+      if (!current) return;
+
+      dispatch({ kind: "local-set-price", item: { ...current, price: input.price } });
+
+      const result = await recordMarketPriceAction({ ...input, householdId }).catch(
+        () => null,
+      );
+
+      if (!result || !result.ok) {
+        dispatch({ kind: "local-set-price", item: current });
+        toast({
+          title: "No se pudo registrar el precio",
+          description: result?.ok === false ? result.error : "El item sigue con su precio anterior.",
+          tone: "critical",
+        });
+        return;
+      }
+
+      // El evento lleva el item completo: quien esté mirando el carrito en
+      // otra pantalla ve el precio real del puesto, no el de referencia.
+      publish({ type: "item-price-registered", item: result.item, total: result.total });
+    },
+    [householdId, publish, toast],
+  );
+
   // --- cambio por la alternativa barata ------------------------------------
 
   const swapItem = useCallback(
@@ -819,13 +1095,18 @@ export function useLiveCart(
     latestVerdictItemId: state.latestVerdictItemId,
     quotes: state.quotes,
     pricePending: state.pricePending,
+    purchasePending: state.purchasePending,
+    purchaseFeed: state.purchaseFeed,
     outOfSync,
     status,
     presence,
     addItem,
     removeItem,
     setQty,
+    setNote,
+    setPurchased,
     requestPrices,
+    recordMarketPrice,
     swapItem,
   };
 }

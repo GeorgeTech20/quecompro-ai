@@ -7,7 +7,7 @@ import { cn } from "./cn";
  */
 
 export const controlBaseClass = cn(
-  "w-full rounded-control border bg-surface text-ink placeholder:text-ink-faint",
+  "w-full rounded-input border bg-surface text-ink placeholder:text-ink-faint",
   "transition-colors duration-150",
   "focus:outline-none focus:ring-2 focus:ring-brand-600/35",
   "disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted",

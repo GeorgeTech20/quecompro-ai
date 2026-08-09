@@ -29,6 +29,17 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function MacroTile({ label, value, unit }: { label: string; value: number; unit: string }) {
+  return (
+    <div className="rounded-button bg-surface-sunken px-3 py-2.5">
+      <dt className="text-[11px] text-ink-faint">{label}</dt>
+      <dd className="mt-1 text-base font-semibold text-ink tabular-nums">
+        {Math.round(value)} <span className="text-xs font-normal text-ink-muted">{unit}</span>
+      </dd>
+    </div>
+  );
+}
+
 export function PantryDetail({ item, recipeCount, rebuying, onCook, onRebuy }: PantryDetailProps) {
   const per100 = pricePer100g(item.unitPrice, item.unit);
   const macros = item.macros;
@@ -62,17 +73,16 @@ export function PantryDetail({ item, recipeCount, rebuying, onCook, onRebuy }: P
       </dl>
 
       <div>
-        <p className="mb-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-          Macros por 100 g
-        </p>
+        <p className="text-sm font-semibold text-ink">Información nutricional</p>
+        <p className="mt-0.5 text-xs text-ink-faint">Valores aproximados por 100 g o 100 ml.</p>
         {macros ? (
-          <dl className="grid grid-cols-2 gap-x-4">
-            <Row label="Calorías" value={`${Math.round(macros.kcal)} kcal`} />
-            <Row label="Proteína" value={`${Math.round(macros.protein_g)} g`} />
-            <Row label="Carbohidratos" value={`${Math.round(macros.carbs_g)} g`} />
-            <Row label="Grasa" value={`${Math.round(macros.fat_g)} g`} />
-            <Row label="Fibra" value={`${Math.round(macros.fiber_g)} g`} />
-            <Row label="Sodio" value={`${Math.round(macros.sodium_mg)} mg`} />
+          <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+            <MacroTile label="Energía" value={macros.kcal} unit="kcal" />
+            <MacroTile label="Proteína" value={macros.protein_g} unit="g" />
+            <MacroTile label="Carbohidratos" value={macros.carbs_g} unit="g" />
+            <MacroTile label="Grasa total" value={macros.fat_g} unit="g" />
+            <MacroTile label="Fibra" value={macros.fiber_g} unit="g" />
+            <MacroTile label="Sodio" value={macros.sodium_mg} unit="mg" />
           </dl>
         ) : (
           <p className="text-sm text-ink-faint">

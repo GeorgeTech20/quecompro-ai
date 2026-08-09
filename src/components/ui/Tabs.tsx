@@ -100,7 +100,7 @@ export function Tabs({
         className={cn(
           "flex items-center gap-1",
           variant === "underline" && "border-b border-border-subtle",
-          variant === "pill" && "rounded-control bg-surface-sunken p-1",
+          variant === "pill" && "rounded-button bg-surface-sunken p-1",
           fitted && "w-full",
           tabListClassName,
         )}
@@ -138,7 +138,7 @@ export function Tabs({
                   ),
                 variant === "pill" &&
                   cn(
-                    "rounded-[calc(var(--radius-control)-2px)] px-3 py-1.5",
+                    "rounded-md px-3 py-1.5",
                     selected
                       ? "bg-surface text-ink shadow-card"
                       : "text-ink-muted hover:text-ink",

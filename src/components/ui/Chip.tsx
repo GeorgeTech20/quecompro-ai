@@ -39,7 +39,7 @@ export function Chip({
     <span
       {...rest}
       className={cn(
-        "inline-flex max-w-full items-center rounded-full border font-medium",
+        "inline-flex max-w-full items-center rounded-chip border font-medium",
         TONE[tone],
         SIZE[size].wrap,
         onRemove && (size === "sm" ? "pr-1" : "pr-1.5"),

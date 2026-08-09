@@ -29,7 +29,7 @@ export function LiveDot({
         aria-hidden="true"
         className={cn(
           "rounded-full",
-          active ? "bg-brand-500 animate-live-dot" : "bg-ink-faint",
+          active ? "bg-grade-a animate-live-dot" : "bg-ink-faint",
           SIZE[size],
         )}
       />

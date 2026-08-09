@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-
+import { IconBasket } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
 import { useHousehold } from "@/components/providers/realtime-provider";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Card, CardHeader, CardTitle, EmptyState, SearchIcon } from "@/components/ui";
+import { Button, Card, CardHeader, CardTitle, EmptyState, SearchIcon } from "@/components/ui";
 import { useCartPresence } from "@/hooks/use-cart-presence";
 import { useLiveCart, type CartVerdict, type LiveCartSeedItem } from "@/hooks/use-live-cart";
+import { isPortalPublishableConfigured } from "@/lib/realtime/portal-client";
 
 import { AddItemBar } from "./AddItemBar";
 import { AiVerdictCard } from "./AiVerdictCard";
@@ -15,6 +16,7 @@ import { CartItemRow } from "./CartItemRow";
 import { CartTotal, projectMonthEnd, type BudgetSnapshot } from "./CartTotal";
 import { ConnectionBadge } from "./ConnectionBadge";
 import { PresenceBar } from "./PresenceBar";
+import { PurchaseRunSheet } from "./PurchaseRunSheet";
 
 /**
  * La pantalla del carrito compartido.
@@ -36,11 +38,24 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
   // consumen. El "Deshacer" del borrado sale por el toast de la app.
   const household = useHousehold();
 
+  const portalConfigured = isPortalPublishableConfigured();
   const cart = useLiveCart(household.householdId, seedItems);
   const presence = useCartPresence(household.householdId, {
     name: household.displayName,
     avatarUrl: household.avatarUrl,
   });
+
+  // "Modo compra": hoja a pantalla completa para el supermercado. El check ahí
+  // es compra compartida con evidencia opcional.
+  const [runOpen, setRunOpen] = useState(false);
+
+  const checkedCount = cart.items.filter((item) => item.purchasedAt).length;
+
+  async function toggleCheck(itemId: string) {
+    const item = cart.items.find((entry) => entry.id === itemId);
+    if (!item) return;
+    await cart.setPurchased(itemId, item.purchasedAt == null);
+  }
 
   const latestVerdict: CartVerdict | null = cart.latestVerdictItemId
     ? (cart.verdicts[cart.latestVerdictItemId] ?? null)
@@ -62,8 +77,8 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
   return (
     <PageShell>
       <PageHeader
-        title="Carrito"
-        description={`Lo que compran en ${householdName}. Todo lo que agreguen aparece en las dos pantallas al instante.`}
+        title="Compra de hoy"
+        description={`La lista compartida de ${householdName}. Marca lo que ya está en el canasto y agrega una nota cuando importe elegir bien.`}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <PresenceBar
@@ -72,28 +87,46 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
               aggregate={presence.aggregate}
               typing={presence.typing}
             />
-            <ConnectionBadge status={cart.status} />
+            <ConnectionBadge status={cart.status} portalConfigured={portalConfigured} />
           </div>
         }
       />
 
-      <AddItemBar
-        householdId={household.householdId}
-        onAdd={cart.addItem}
-        onTyping={presence.sendTyping}
-      />
+      <div className="sticky top-[4.25rem] z-20 rounded-[18px] border border-sky-200 bg-white/95 p-2 shadow-[0_5px_0_rgba(20,42,58,0.08)] backdrop-blur sm:static sm:p-3">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <AddItemBar
+              householdId={household.householdId}
+              onAdd={cart.addItem}
+              onTyping={presence.sendTyping}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="md"
+            className="shrink-0 max-sm:px-3"
+            iconLeft={<IconBasket className="size-4" />}
+            onClick={() => setRunOpen(true)}
+          >
+            <span className="max-sm:hidden">Modo compra</span>
+            <span className="sm:hidden">Comprar</span>
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <Card className="overflow-hidden">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+        <Card className="qc-shopping-paper overflow-hidden rounded-panel max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0 max-sm:shadow-none">
           <CardHeader
+            className="px-4 sm:px-5"
             actions={
               <span className="text-[13px] text-ink-muted">
-                {cart.itemCount === 1 ? "1 línea" : `${cart.itemCount} líneas`}
+                {cart.itemCount === 1 ? "1 producto" : `${cart.itemCount} productos`}
+                {checkedCount > 0 ? ` · ${checkedCount} en el canasto` : ""}
               </span>
             }
           >
-            <CardTitle subtitle="Todo lo que agreguen aparece aquí al instante.">
-              Lista de la casa
+            <CardTitle subtitle="Una sola lista para todos en casa.">
+              Lista compartida
             </CardTitle>
           </CardHeader>
 
@@ -109,24 +142,30 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
                 <CartItemRow
                   key={item.id}
                   item={item}
+                  householdId={household.householdId}
                   verdict={cart.verdicts[item.id]}
                   quotes={cart.quotes[item.id]}
                   pricePending={cart.pricePending[item.id]}
+                  checked={item.purchasedAt != null}
+                  onToggleCheck={toggleCheck}
                   onQty={cart.setQty}
+                  onNote={cart.setNote}
                   onRemove={cart.removeItem}
                   onRequestPrices={cart.requestPrices}
+                  onRecordPrice={cart.recordMarketPrice}
                 />
               ))}
             </ul>
           )}
         </Card>
 
-        <aside className="flex flex-col gap-4">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
           <CartTotal
             total={cart.total}
             itemCount={cart.itemCount}
             budget={budget}
             outOfSync={cart.outOfSync}
+            className="rounded-panel"
           />
 
           <BudgetAlert spent={spent} budget={budget.budget} projected={projected} />
@@ -140,6 +179,20 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
           ) : null}
         </aside>
       </div>
+
+      {runOpen ? (
+        <PurchaseRunSheet
+          householdName={householdName}
+          items={cart.items}
+          purchasePending={cart.purchasePending}
+          purchaseFeed={cart.purchaseFeed}
+          others={presence.others}
+          presenceCount={presence.count}
+          presenceAggregate={presence.aggregate}
+          onClose={() => setRunOpen(false)}
+          onSetPurchased={cart.setPurchased}
+        />
+      ) : null}
     </PageShell>
   );
 }

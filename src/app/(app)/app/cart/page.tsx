@@ -14,6 +14,7 @@ import {
   getProfileByClerkId,
 } from "@/lib/data";
 import type { LiveCartSeedItem } from "@/hooks/use-live-cart";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
  * Punto de entrada del carrito.
@@ -77,6 +78,18 @@ export default async function CartPage() {
     ]),
   );
 
+  const purchasePhotoEntries = await Promise.all(
+    cart.items
+      .filter((item) => Boolean(item.purchase_photo_path))
+      .map(async (item) => {
+        const signed = await supabaseAdmin()
+          .storage.from("purchase-evidence")
+          .createSignedUrl(item.purchase_photo_path as string, 60 * 60);
+        return [item.id, signed.data?.signedUrl] as const;
+      }),
+  );
+  const purchasePhotoByItem = new Map(purchasePhotoEntries);
+
   const seedItems: LiveCartSeedItem[] = cart.items.map((row) => ({
     id: row.id,
     title: row.title,
@@ -86,7 +99,12 @@ export default async function CartPage() {
     store: row.store ?? undefined,
     category: row.category ?? undefined,
     healthGrade: row.health_grade ?? undefined,
+    note: row.note ?? undefined,
     addedBy: row.added_by ? memberById.get(row.added_by) : undefined,
+    addedAt: row.created_at,
+    purchasedAt: row.purchased_at ?? undefined,
+    purchasedBy: row.purchased_by ? memberById.get(row.purchased_by) : undefined,
+    purchasePhotoUrl: purchasePhotoByItem.get(row.id),
     productKey: row.product_id ? keyByProductId.get(row.product_id) : undefined,
     createdAt: Date.parse(row.created_at),
     updatedAt: Date.parse(row.updated_at),

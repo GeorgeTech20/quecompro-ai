@@ -9,6 +9,9 @@ import "server-only";
 
 export * from "./cart";
 export * from "./households";
+export * from "./habits";
+export * from "./market-prices";
+export * from "./meal-plans";
 export * from "./prices";
 export * from "./products";
 export * from "./recipes";

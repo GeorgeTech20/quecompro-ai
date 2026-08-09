@@ -2,6 +2,8 @@ import "server-only";
 
 import { spawn } from "node:child_process";
 
+import { STORE_DOMAINS, storeSearchUrl, type StoreDomain } from "./store-links";
+
 /**
  * Envoltorio del CLI `agent-browser` (vercel-labs).
  *
@@ -18,9 +20,9 @@ import { spawn } from "node:child_process";
  *    dejar colgada una API route.
  */
 
-export const ALLOWED_DOMAINS = ["tottus.com.pe", "plazavea.com.pe", "metro.pe", "wong.pe"] as const;
+export const ALLOWED_DOMAINS = STORE_DOMAINS;
 
-export type Store = (typeof ALLOWED_DOMAINS)[number];
+export type Store = StoreDomain;
 
 /** Tope duro por consulta. Más que esto y la demo se siente muerta. */
 export const QUERY_TIMEOUT_MS = 12_000;
@@ -141,13 +143,6 @@ export function sanitizeQuery(raw: string): string {
     .slice(0, 60);
 }
 
-const SEARCH_URL: Record<Store, (query: string) => string> = {
-  "tottus.com.pe": (q) => `https://www.tottus.com.pe/search?Ntt=${encodeURIComponent(q)}`,
-  "plazavea.com.pe": (q) => `https://www.plazavea.com.pe/search/?_query=${encodeURIComponent(q)}`,
-  "metro.pe": (q) => `https://www.metro.pe/${encodeURIComponent(q)}?_q=${encodeURIComponent(q)}&map=ft`,
-  "wong.pe": (q) => `https://www.wong.pe/${encodeURIComponent(q)}?_q=${encodeURIComponent(q)}&map=ft`,
-};
-
 /** Precios peruanos: "S/ 12.90", "S/12,90", "S/. 12.90". */
 const PRICE_RE = /S\/\.?\s*([0-9]{1,4}(?:[.,][0-9]{2})?)/g;
 
@@ -161,7 +156,7 @@ export function extractPrices(pageText: string): number[] {
   return found;
 }
 
-export type ScrapedPrice = { store: Store; price: number };
+export type ScrapedPrice = { store: Store; price: number; url: string };
 
 /**
  * Abre la búsqueda de una tienda y saca el precio más bajo visible. Devuelve
@@ -173,7 +168,9 @@ export async function scrapeStorePrice(store: Store, query: string): Promise<Scr
   if (!clean) return null;
 
   const started = Date.now();
-  const opened = await open(SEARCH_URL[store](clean), QUERY_TIMEOUT_MS);
+  const url = storeSearchUrl(store, clean);
+  if (!url) return null;
+  const opened = await open(url, QUERY_TIMEOUT_MS);
   if (!opened.ok) return null;
 
   const remaining = QUERY_TIMEOUT_MS - (Date.now() - started);
@@ -188,5 +185,5 @@ export async function scrapeStorePrice(store: Store, query: string): Promise<Scr
   const prices = extractPrices(page.stdout);
   if (prices.length === 0) return null;
 
-  return { store, price: Math.min(...prices) };
+  return { store, price: Math.min(...prices), url };
 }

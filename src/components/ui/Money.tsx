@@ -2,24 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
-
-const PEN = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const PEN_ROUND = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  maximumFractionDigits: 0,
-});
-
-/** `S/ 12.90`. Único formateador de soles de la app. */
-export function formatPEN(value: number, options?: { round?: boolean }): string {
-  return options?.round ? PEN_ROUND.format(value) : PEN.format(value);
-}
+import { formatPEN } from "./format-pen";
 
 export type MoneyProps = Omit<React.ComponentProps<"span">, "children"> & {
   value: number;

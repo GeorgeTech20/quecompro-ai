@@ -46,7 +46,7 @@ export function HealthChip({
       title={description}
       aria-label={showLabel ? undefined : description}
       className={cn(
-        "inline-flex items-center rounded-full border font-medium text-ink",
+        "inline-flex items-center rounded-chip border font-medium text-ink",
         wrap,
         showLabel ? SIZE[size].wrap : "p-0.5",
         className,

@@ -15,11 +15,11 @@ export type ButtonProps = Omit<React.ComponentProps<"button">, "children"> & {
 };
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800",
+  primary: "qc-tactile-primary bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700",
   secondary:
-    "bg-surface text-ink border border-border-strong hover:bg-surface-sunken active:bg-surface-sunken",
+    "qc-tactile-secondary bg-surface text-ink border border-border-strong hover:bg-surface-sunken active:bg-surface-sunken",
   tertiary: "bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink",
-  danger: "bg-danger text-white hover:bg-danger/90 active:bg-danger/80",
+  danger: "qc-tactile-danger bg-danger text-white hover:bg-danger/90 active:bg-danger/80",
 };
 
 const SIZE: Record<ButtonSize, string> = {
@@ -50,8 +50,8 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cn(
-        "inline-flex select-none items-center justify-center rounded-control font-medium",
-        "transition-colors duration-150 ease-[var(--ease-out-soft)]",
+        "inline-flex select-none items-center justify-center rounded-button font-medium",
+        "transition-[transform,box-shadow,background-color,border-color,color] duration-150 ease-[var(--ease-out-soft)]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
         "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANT[variant],

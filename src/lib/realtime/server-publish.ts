@@ -1,7 +1,6 @@
 import "server-only";
 
 import { Portal, PortalError, type ChannelHandle } from "@portalsdk/core";
-import jwt from "jsonwebtoken";
 
 import { channels, type CartEvent, type ChatEvent, type InboxEvent } from "./channels";
 
@@ -40,9 +39,7 @@ export type PublishResult =
 let portal: Portal | undefined;
 /** Una vez que Portal rechaza la key no tiene sentido reintentar en cada request. */
 let disabled = false;
-let cachedToken: { value: string; expiresAt: number } | undefined;
 
-const TOKEN_TTL_SECONDS = 3600;
 /** Ninguna API route puede quedarse colgada esperando al socket. */
 const SEND_TIMEOUT_MS = 4000;
 
@@ -52,38 +49,18 @@ function portalApiKey(): string | undefined {
   return process.env.PORTAL_SECRET_KEY || process.env.NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY || undefined;
 }
 
-/**
- * Token de sesión del bot, firmado con el mismo secreto que usa /api/portal-token
- * para los humanos. `sub: "assistant"` es la identidad que verán las dos pantallas.
- */
-function botToken(): string {
-  const secret = process.env.PORTAL_TOKEN_SECRET;
-  if (!secret) throw new Error("PORTAL_TOKEN_SECRET ausente");
-
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedToken && cachedToken.expiresAt - now > 60) return cachedToken.value;
-
-  const value = jwt.sign(
-    { sub: "assistant", name: "Despensero", bot: true },
-    secret,
-    { algorithm: "HS256", expiresIn: TOKEN_TTL_SECONDS },
-  );
-  cachedToken = { value, expiresAt: now + TOKEN_TTL_SECONDS };
-  return value;
-}
-
 function serverPortal(): Portal | undefined {
   if (disabled) return undefined;
   if (portal) return portal;
 
   const apiKey = portalApiKey();
-  if (!apiKey || !process.env.PORTAL_TOKEN_SECRET) {
+  if (!apiKey) {
     disabled = true;
     console.warn("[server-publish] Portal sin configurar; la IA responde solo por HTTP.");
     return undefined;
   }
 
-  portal = new Portal({ apiKey, token: async () => botToken() });
+  portal = new Portal({ apiKey });
   return portal;
 }
 

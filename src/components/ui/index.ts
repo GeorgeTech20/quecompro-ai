@@ -1,5 +1,5 @@
 /**
- * Design system de QuéCompro.app — barrel único.
+ * Design system de QuéComproo — barrel único.
  * Import: `import { Button, HealthChip, Money } from "@/components/ui";`
  */
 
@@ -30,7 +30,10 @@ export {
 export { Input, type InputProps, type InputSize } from "./Input";
 export { LiveDot, type LiveDotProps, type LiveDotSize } from "./LiveDot";
 export { Modal, type ModalProps, type ModalSize } from "./Modal";
-export { formatPEN, Money, type MoneyProps } from "./Money";
+export { Money, type MoneyProps } from "./Money";
+// Desde su propio módulo (sin "use client"): así lo puede llamar un server
+// component, que es donde se formatean la mayoría de los precios.
+export { formatPEN } from "./format-pen";
 export {
   ProgressBar,
   toneForPercent,

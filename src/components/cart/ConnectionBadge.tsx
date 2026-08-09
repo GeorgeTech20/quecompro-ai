@@ -15,6 +15,7 @@ import { AlertIcon, cn, LiveDot, SpinnerIcon } from "@/components/ui";
 
 export type ConnectionBadgeProps = {
   status: ChannelStatus;
+  portalConfigured?: boolean;
   className?: string;
 };
 
@@ -42,7 +43,7 @@ const LOOK: Record<ChannelStatus, Look> = {
     text: "En vivo",
     detail: "Todos ven los cambios al instante.",
     icon: "live",
-    tone: "text-brand-700",
+    tone: "text-grade-a",
   },
   reconnecting: {
     text: "Reconectando…",
@@ -54,7 +55,7 @@ const LOOK: Record<ChannelStatus, Look> = {
     text: "En vivo",
     detail: "Algunos extras van con retraso.",
     icon: "live",
-    tone: "text-brand-700",
+    tone: "text-grade-a",
   },
   "degraded-http": {
     text: "Reconectando…",
@@ -70,14 +71,22 @@ const LOOK: Record<ChannelStatus, Look> = {
   },
 };
 
-export function ConnectionBadge({ status, className }: ConnectionBadgeProps) {
+export function ConnectionBadge({
+  status,
+  portalConfigured = true,
+  className,
+}: ConnectionBadgeProps) {
   const look = LOOK[status];
+  const detail =
+    status === "blocked" && !portalConfigured
+      ? "Falta NEXT_PUBLIC_PORTAL_PUBLISHABLE_KEY en .env.local."
+      : look.detail;
 
   return (
     <span
-      title={look.detail}
+      title={detail}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface",
+        "inline-flex items-center gap-1.5 rounded-chip border border-border-subtle bg-surface",
         "h-7 px-2.5 text-[12px] font-medium",
         look.tone,
         className,
@@ -87,7 +96,7 @@ export function ConnectionBadge({ status, className }: ConnectionBadgeProps) {
       {look.icon === "spinner" ? <SpinnerIcon className="size-3.5" /> : null}
       {look.icon === "alert" ? <AlertIcon className="size-3.5" /> : null}
       <span>{look.text}</span>
-      <span className="sr-only">{look.detail}</span>
+      <span className="sr-only">{detail}</span>
     </span>
   );
 }

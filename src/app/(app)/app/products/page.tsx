@@ -85,7 +85,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             {category ? ` · ${categoryLabel(category)}` : ""}
           </p>
 
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {products.map((product) => (
               <li key={product.id}>
                 <ProductCard product={product} householdId={viewer.household.id} />
@@ -102,7 +102,32 @@ function ProductCard({ product, householdId }: { product: ProductRow; householdI
   const per100 = pricePer100g(product.price, product.unit);
 
   return (
-    <Card padding="md" className="flex h-full flex-col gap-3">
+    <Card padding="none" className="group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-raised">
+      <div className="relative aspect-square overflow-hidden bg-brand-50">
+        {product.image_url ? (
+          <>
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="size-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" />
+          </>
+        ) : (
+          <div className="flex size-full flex-col items-center justify-center gap-3 px-8 pb-12 text-center text-ink-faint">
+            <span className="grid size-14 place-items-center rounded-full bg-white">
+              <BasketIcon className="size-6" />
+            </span>
+            <p className="line-clamp-2 text-sm font-medium text-ink-muted">{product.name}</p>
+            <p className="text-xs">Imagen pendiente de verificar</p>
+          </div>
+        )}
+        <div className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-2">
+          <Badge tone="neutral" className="border-white/50 bg-white/85 text-ink backdrop-blur">{product.store}</Badge>
+          {product.health_grade ? <HealthChip grade={product.health_grade} size="sm" showLabel={false} /> : null}
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col gap-3 p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink" title={product.name}>
@@ -113,9 +138,6 @@ function ProductCard({ product, householdId }: { product: ProductRow; householdI
             {categoryLabel(product.category)}
           </p>
         </div>
-        {product.health_grade ? (
-          <HealthChip grade={product.health_grade} size="sm" showLabel={false} />
-        ) : null}
       </div>
 
       <div className="flex items-end justify-between gap-3">
@@ -133,7 +155,6 @@ function ProductCard({ product, householdId }: { product: ProductRow; householdI
               : "Se vende por unidad: no hay precio por 100 g"}
           </p>
         </div>
-        <Badge tone="neutral">{product.store}</Badge>
       </div>
 
       <div className="mt-auto flex justify-end pt-1">
@@ -143,6 +164,7 @@ function ProductCard({ product, householdId }: { product: ProductRow; householdI
           title={product.name}
           price={product.price}
         />
+      </div>
       </div>
     </Card>
   );

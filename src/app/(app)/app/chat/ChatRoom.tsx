@@ -1,11 +1,20 @@
 "use client";
 
 import { useChannel } from "@portalsdk/react";
-import type { Message } from "@portalsdk/core";
+import type { ChannelStatus, Message } from "@portalsdk/core";
 import { useEffect, useRef, useState } from "react";
+import { IconExternalLink } from "@tabler/icons-react";
 
+import {
+  AgentComposer,
+  InlineCitations,
+  ReasoningPanel,
+  StreamingText,
+  WebSearchSources,
+  type Citation,
+} from "@/components/ai";
 import { formatTime } from "@/components/shell/format";
-import { ClockIcon, FlameIcon, SendIcon, SparkIcon } from "@/components/shell/icons";
+import { ClockIcon, FlameIcon, SparkIcon } from "@/components/shell/icons";
 import { LinkButton } from "@/components/shell/LinkButton";
 import {
   Avatar,
@@ -16,7 +25,6 @@ import {
   cn,
   EmptyState,
   Money,
-  Textarea,
 } from "@/components/ui";
 import { channels, type AssistantAction, type ChatEvent, type RecipeSuggestion } from "@/lib/realtime/channels";
 
@@ -28,6 +36,23 @@ import { channels, type AssistantAction, type ChatEvent, type RecipeSuggestion }
  * conversación para todos. Por eso el mensaje propio se publica en el canal
  * antes de llamar a la API — la otra pantalla no espera a que el modelo piense.
  */
+
+/**
+ * Aviso suave según el estado del socket. El chat no bloquea nunca: tu mensaje
+ * va al hilo (canal) y al asistente (HTTP) pase lo que pase; esto solo avisa que
+ * lo de los demás puede tardar o no verse en vivo. `null` = no molestar.
+ */
+function connectionNotice(status: ChannelStatus): string | null {
+  switch (status) {
+    case "degraded-http":
+    case "reconnecting":
+      return "Conexión inestable: puedes seguir escribiendo, los mensajes de los demás pueden tardar.";
+    case "blocked":
+      return "Sin tiempo real. Puedes seguir escribiendo: tu mensaje se guarda y el asistente responde igual, pero lo de los demás no se verá en vivo hasta recargar.";
+    default:
+      return null;
+  }
+}
 
 const SUGGESTIONS = [
   "¿Qué cocino con lo que tengo en el carrito?",
@@ -63,6 +88,8 @@ export function ChatRoom({
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages.length]);
 
+  const notice = connectionNotice(status);
+
   const visible = messages.filter((message) => message.content.type !== "assistant-thinking");
 
   // "Pensando…" se muestra solo si es más nuevo que la última respuesta: si no,
@@ -79,6 +106,10 @@ export function ChatRoom({
   const thinkingHint =
     thinkingMessage && thinkingMessage.content.type === "assistant-thinking"
       ? thinkingMessage.content.hint
+      : undefined;
+  const thinkingStage =
+    thinkingMessage && thinkingMessage.content.type === "assistant-thinking"
+      ? thinkingMessage.content.stage
       : undefined;
 
   async function submit(text: string) {
@@ -121,9 +152,9 @@ export function ChatRoom({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {status === "degraded-http" || status === "reconnecting" ? (
+      {notice ? (
         <p className="rounded-control border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
-          Conexión inestable: puedes seguir escribiendo, los mensajes de los demás pueden tardar.
+          {notice}
         </p>
       ) : null}
 
@@ -147,8 +178,10 @@ export function ChatRoom({
           ))
         )}
 
-        {thinkingHint ? <ThinkingBubble hint={thinkingHint} /> : null}
-        {!thinkingHint && sending ? <ThinkingBubble hint="Mandando tu mensaje…" /> : null}
+        {thinkingHint ? <ThinkingBubble hint={thinkingHint} stage={thinkingStage} /> : null}
+        {!thinkingHint && sending ? (
+          <ThinkingBubble hint="Enviando tu consulta…" stage="context" />
+        ) : null}
 
         <div ref={bottomRef} />
       </div>
@@ -180,43 +213,13 @@ export function ChatRoom({
         </div>
       ) : null}
 
-      <form
-        className="flex items-end gap-2 border-t border-border-subtle bg-canvas pt-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit(draft);
-        }}
-      >
-        <Textarea
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            sendTyping();
-          }}
-          onKeyDown={(event) => {
-            // Enter manda, Shift+Enter salta de línea: como cualquier chat.
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void submit(draft);
-            }
-          }}
-          rows={1}
-          maxLength={1000}
-          placeholder="Escribe aquí… todos en la casa lo van a ver"
-          aria-label="Mensaje para el asistente y para la casa"
-          wrapperClassName="flex-1"
-          className="max-h-32"
-        />
-        <Button
-          type="submit"
-          loading={sending}
-          disabled={draft.trim().length === 0}
-          iconLeft={<SendIcon className="size-4" />}
-          aria-label="Enviar mensaje"
-        >
-          Enviar
-        </Button>
-      </form>
+      <AgentComposer
+        value={draft}
+        onChange={setDraft}
+        onTyping={sendTyping}
+        pending={sending}
+        onSubmit={() => void submit(draft)}
+      />
     </div>
   );
 }
@@ -259,16 +262,28 @@ function ChatBubble({
   }
 
   if (event.type === "assistant-message") {
+    const sources: Citation[] = (event.actions ?? []).flatMap((action) =>
+      action.kind === "price-check"
+        ? action.quotes.flatMap((quote) =>
+            quote.url
+              ? [{ label: quote.store, href: quote.url, detail: `S/ ${quote.price.toFixed(2)}` }]
+              : [],
+          )
+        : [],
+    );
+    const visibleActions = (event.actions ?? []).filter((action) => action.kind !== "price-check");
     return (
       <div className="flex items-start gap-2.5">
         <AssistantAvatar />
-        <div className="flex min-w-0 max-w-[85%] flex-col gap-1.5">
+        <div className="flex min-w-0 max-w-[92%] flex-col gap-1.5 sm:max-w-[85%]">
           <p className="text-xs text-ink-faint">Despensero · {at}</p>
-          <div className="animate-rise rounded-card border border-brand-200 bg-brand-50 px-3.5 py-2.5 dark:border-brand-800 dark:bg-brand-900/30">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink">{event.text}</p>
-            {event.actions && event.actions.length > 0 ? (
+          <div className="animate-rise rounded-card border border-border-subtle bg-surface px-3.5 py-3 shadow-sm sm:px-4">
+            <WebSearchSources sources={sources} />
+            <StreamingText text={event.text} />
+            <InlineCitations sources={sources} />
+            {visibleActions.length > 0 ? (
               <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                {event.actions.map((action, index) => (
+                {visibleActions.map((action, index) => (
                   <li key={`${action.kind}-${index}`}>
                     <ActionChip action={action} />
                   </li>
@@ -307,28 +322,24 @@ function AssistantAvatar() {
   );
 }
 
-function ThinkingBubble({ hint }: { hint: string }) {
-  return (
-    <div className="flex items-center gap-2.5" role="status" aria-live="polite">
-      <AssistantAvatar />
-      <span className="animate-rise inline-flex items-center gap-2 rounded-card border border-border-subtle bg-surface px-3.5 py-2 text-sm text-ink-muted">
-        <span aria-hidden="true" className="flex gap-1">
-          <Dot delay="0ms" />
-          <Dot delay="160ms" />
-          <Dot delay="320ms" />
-        </span>
-        {hint}
-      </span>
-    </div>
-  );
-}
+function ThinkingBubble({
+  hint,
+  stage = "answer",
+}: {
+  hint: string;
+  stage?: "context" | "sources" | "answer";
+}) {
+  const stageLabel = {
+    context: "Entendiendo tu pedido",
+    sources: "Verificando fuentes",
+    answer: "Preparando respuesta",
+  }[stage];
 
-function Dot({ delay }: { delay: string }) {
   return (
-    <span
-      style={{ animationDelay: delay }}
-      className="animate-live-dot size-1.5 rounded-full bg-brand-500"
-    />
+    <div className="flex items-start gap-2.5" role="status" aria-live="polite">
+      <AssistantAvatar />
+      <ReasoningPanel label={stageLabel} hint={hint} />
+    </div>
   );
 }
 
@@ -357,6 +368,36 @@ function ActionChip({ action }: { action: AssistantAction }) {
         <LinkButton href="/app/settings" size="sm" variant="secondary">
           Poner presupuesto en <Money value={action.monthly} round className="ml-1" />
         </LinkButton>
+      );
+    case "price-check":
+      return (
+        <div className="w-full min-w-[16rem] rounded-control border border-border-subtle bg-white p-2.5">
+          <p className="mb-2 text-xs font-semibold text-ink">Precios y enlaces de tienda</p>
+          <div className="flex flex-wrap gap-1.5">
+            {action.quotes.length > 0 ? (
+              action.quotes.map((quote) => (
+                quote.url ? (
+                  <a
+                    key={`${quote.store}-${quote.price}`}
+                    href={quote.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-brand-300 hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:outline-none"
+                  >
+                    {quote.store} <Money value={quote.price} />
+                    <IconExternalLink aria-hidden="true" className="size-3" />
+                  </a>
+                ) : (
+                  <Chip key={`${quote.store}-${quote.price}`} size="sm" tone="neutral">
+                    {quote.store} <Money value={quote.price} className="ml-1" />
+                  </Chip>
+                )
+              ))
+            ) : (
+              <span className="text-xs text-ink-muted">No hubo precios verificables ahora.</span>
+            )}
+          </div>
+        </div>
       );
   }
 }

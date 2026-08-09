@@ -9,7 +9,8 @@ import { useCartCount } from "./cart-count";
 import { BOTTOM_NAV_ITEMS, isActiveHref } from "./nav-items";
 
 /**
- * Barra inferior del móvil: cinco destinos, el pulgar los alcanza todos.
+ * Barra inferior del móvil: píldora flotante, sin la raya divisoria de
+ * antes. Cinco destinos, el pulgar los alcanza todos.
  *
  * Bajo 640 px la lateral desaparece y esta toma su lugar. El carrito lleva el
  * número de items porque es el único dato que cambia mientras no lo estás
@@ -23,11 +24,11 @@ export function BottomBar() {
     <nav
       aria-label="Navegación principal"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-surface/95 backdrop-blur",
+        "fixed inset-x-3 bottom-3 z-40 rounded-card border border-border-subtle bg-surface/95 backdrop-blur shadow-raised",
         "pb-[env(safe-area-inset-bottom)] sm:hidden",
       )}
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-5 px-1.5 py-1.5">
         {BOTTOM_NAV_ITEMS.map((item) => {
           const active = isActiveHref(pathname, item.href);
           const Icon = item.icon;
@@ -39,10 +40,10 @@ export function BottomBar() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-14 flex-col items-center justify-center gap-0.5",
+                  "flex h-12 flex-col items-center justify-center gap-0.5 rounded-full",
                   "transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-inset",
-                  active ? "text-brand-700 dark:text-brand-200" : "text-ink-muted",
+                  active ? "bg-brand-600 text-white shadow-raised" : "text-ink-muted",
                 )}
               >
                 <span className="relative">
@@ -53,6 +54,7 @@ export function BottomBar() {
                         "absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-brand-600 px-1",
                         "text-center text-[10px] leading-4 font-semibold text-white tabular-nums",
                         "ring-2 ring-surface",
+                        active && "bg-brand-800",
                       )}
                     >
                       {count > 9 ? "9+" : count}

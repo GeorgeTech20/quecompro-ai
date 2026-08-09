@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { MealStreakCard } from "@/components/home/MealStreakCard";
+import { MealPlanBoard } from "@/components/home/MealPlanBoard";
 import {
   averageHealth,
   budgetPercent,
@@ -34,12 +36,18 @@ import {
   ProgressBar,
   toneForPercent,
 } from "@/components/ui";
-import type { HouseholdCart } from "@/lib/data";
-import type { MemberWithProfile, TransactionRow } from "@/types/db";
+import { getMealPlans, getMealStreak, todayInLima, type HouseholdCart, type MealStreakSnapshot } from "@/lib/data";
+import type { MealPlanRow, MemberWithProfile, TransactionRow } from "@/types/db";
 
 export const metadata: Metadata = { title: "Resumen" };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function shiftDate(date: string, amount: number): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + amount);
+  return value.toISOString().slice(0, 10);
+}
 
 /**
  * Resumen: la primera pantalla al entrar.
@@ -69,7 +77,18 @@ export default async function DashboardPage() {
     periodStart: new Date().toISOString(),
   };
 
-  const [cart, spend, members, transactions] = await Promise.all([
+  const emptyStreak: MealStreakSnapshot = {
+    currentStreak: 0,
+    today: new Date().toISOString().slice(0, 10),
+    todayHealthyCount: 0,
+    target: 2,
+    meals: {},
+    protectedToday: false,
+    history: [],
+  };
+
+  const planToday = todayInLima();
+  const [cart, spend, members, transactions, streak, mealPlans] = await Promise.all([
     safeLoad<HouseholdCart>(
       () => loadCart(household.id),
       { householdId: household.id, items: [], total: 0, itemCount: 0 },
@@ -78,6 +97,16 @@ export default async function DashboardPage() {
     safeLoad<MonthSpend>(() => loadMonthSpend(household.id), emptySpend, "resumen:gasto"),
     safeLoad<MemberWithProfile[]>(() => loadMembers(household.id), [], "resumen:miembros"),
     safeLoad<TransactionRow[]>(() => loadTransactions(household.id, 60), [], "resumen:compras"),
+    safeLoad<MealStreakSnapshot>(
+      () => getMealStreak(household.id, profile.id),
+      emptyStreak,
+      "resumen:racha",
+    ),
+    safeLoad<MealPlanRow[]>(
+      () => getMealPlans(household.id, planToday, shiftDate(planToday, 1)),
+      [],
+      "resumen:plan-comidas",
+    ),
   ]);
 
   const percent = budgetPercent(spend.spent, spend.budget);
@@ -115,9 +144,16 @@ export default async function DashboardPage() {
         }
       />
 
+      <MealStreakCard householdId={household.id} initial={streak} />
+
+      <MealPlanBoard householdId={household.id} today={planToday} initial={mealPlans} />
+
       {/* --- Fila de indicadores --- */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card padding="md" className="flex flex-col gap-4 lg:col-span-2">
+        <Card
+          padding="md"
+          className="flex flex-col gap-4 rounded-card lg:col-span-2"
+        >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <p className="text-sm font-medium text-ink-muted">Presupuesto del mes</p>
@@ -167,7 +203,7 @@ export default async function DashboardPage() {
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <Card padding="md" className="flex flex-col gap-2">
+          <Card padding="md" className="flex flex-col gap-2 rounded-card">
             <p className="text-sm font-medium text-ink-muted">Salud del carrito</p>
             {health ? (
               <>
@@ -189,7 +225,7 @@ export default async function DashboardPage() {
             )}
           </Card>
 
-          <Card padding="md" className="flex flex-col gap-2">
+          <Card padding="md" className="flex flex-col gap-2 rounded-card">
             <p className="text-sm font-medium text-ink-muted">Gasto de la semana</p>
             <p className="text-2xl font-semibold tracking-tight text-ink">
               <Money value={weekSpend} />
@@ -210,10 +246,10 @@ export default async function DashboardPage() {
       >
         <Card
           padding="md"
-          className="flex flex-wrap items-center justify-between gap-4 border-brand-200 bg-brand-50 transition-colors duration-150 group-hover:border-brand-300 dark:border-brand-800 dark:bg-brand-900/30"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-card border-border-subtle transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-raised"
         >
           <div className="flex min-w-0 items-center gap-4">
-            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-600 text-white">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-600 text-white shadow-raised">
               <CartIcon className="size-6" />
             </span>
             <div className="min-w-0">
@@ -230,13 +266,13 @@ export default async function DashboardPage() {
             <span className="text-2xl font-semibold tracking-tight text-ink">
               <Money value={cart.total} pulse />
             </span>
-            <ArrowRightIcon className="size-5 text-brand-700 transition-transform duration-150 group-hover:translate-x-0.5" />
+            <ArrowRightIcon className="size-5 text-brand-600 transition-transform duration-200 group-hover:translate-x-1" />
           </div>
         </Card>
       </Link>
 
       {/* --- Últimos items --- */}
-      <Card>
+      <Card className="overflow-hidden rounded-card">
         <CardHeader
           actions={
             <LinkButton href="/app/cart" variant="tertiary" size="sm">
@@ -265,7 +301,10 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-border-subtle">
               {recent.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 px-5 py-3">
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors duration-150 hover:bg-surface-sunken/50"
+                >
                   <Avatar
                     size="sm"
                     name={item.added_by ? namesByProfileId.get(item.added_by) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { IconExternalLink } from "@tabler/icons-react";
 
 import { Button, Chip, cn, Money, SpinnerIcon } from "@/components/ui";
 import type { PriceQuote } from "@/lib/realtime/channels";
@@ -72,9 +73,8 @@ export function PriceCheckButton({
       <span className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
         {visible.map((quote) => {
           const best = cheapest !== null && quote.store === cheapest.store;
-          return (
+          const content = (
             <Chip
-              key={`${quote.store}-${quote.price}`}
               size="sm"
               tone={best ? "accent" : "neutral"}
               className="animate-rise"
@@ -86,7 +86,23 @@ export function PriceCheckButton({
             >
               {quote.store} <Money value={quote.price} className="ml-1 font-semibold" />
               {best ? " · mejor precio hoy" : ""}
+              {quote.url ? <IconExternalLink aria-hidden="true" className="ml-1 size-3" /> : null}
             </Chip>
+          );
+
+          return quote.url ? (
+            <a
+              key={`${quote.store}-${quote.price}`}
+              href={quote.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Ver ${quote.store} en la tienda`}
+              className="rounded-full focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:outline-none"
+            >
+              {content}
+            </a>
+          ) : (
+            <span key={`${quote.store}-${quote.price}`}>{content}</span>
           );
         })}
       </span>

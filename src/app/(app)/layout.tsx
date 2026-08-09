@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { redirect, unstable_rethrow } from "next/navigation";
 
 import { AppShell } from "@/components/shell/AppShell";
 import { loadCart, resolveViewer, type Viewer } from "@/components/shell/server-data";
 import { Card, EmptyState } from "@/components/ui";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Puerta de entrada a la zona autenticada.

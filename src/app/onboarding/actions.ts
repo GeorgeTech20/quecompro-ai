@@ -62,6 +62,26 @@ export async function saveHouseName(
   if (name.length === 0) return { status: "error", message: "Ponle un nombre, aunque sea «Casa»." };
   if (name.length > 60) return { status: "error", message: "Muy largo: máximo 60 caracteres." };
 
+  const viewer = await resolveViewer();
+  if (!viewer) redirect("/login");
+
+  const occupations = new Set(["Desarrollo", "Diseño", "Estudios", "Hogar", "Otro"]);
+  const occupation = String(formData.get("occupation") ?? "").trim();
+  const goals = parseList(formData.get("shopping_goals")).slice(0, 3);
+  if (!occupations.has(occupation)) {
+    return { status: "error", message: "Elige la opción que mejor te describe." };
+  }
+  if (goals.length === 0) {
+    return { status: "error", message: "Elige al menos un objetivo para personalizar tu experiencia." };
+  }
+
+  try {
+    await saveProfile(viewer.profile.id, { occupation, shopping_goals: goals });
+  } catch (error) {
+    console.warn(`[onboarding] perfil no guardado: ${error instanceof Error ? error.message : "?"}`);
+    return { status: "error", message: "No pudimos guardar tus preferencias. Intenta otra vez." };
+  }
+
   const store = await cookies();
   store.set(NAME_COOKIE, name, { maxAge: COOKIE_MAX_AGE, httpOnly: true, sameSite: "lax", path: "/" });
 
