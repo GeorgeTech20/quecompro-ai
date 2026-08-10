@@ -80,7 +80,7 @@ as $$
   returning hits;
 $$;
 
-comment on function bump_rate_limit is
+comment on function bump_rate_limit(text, text, timestamptz, integer) is
   'Suma 1 al contador salvo que ya esté en el tope, y devuelve el total. Atómico.';
 
 -- ---------------------------------------------------------------------------
@@ -105,5 +105,13 @@ $$;
 -- escribir no es un contador.
 alter table rate_limits enable row level security;
 
-revoke all on function bump_rate_limit(text, text, timestamptz) from public, anon, authenticated;
+-- El `revoke` sobre la tabla va además del RLS, igual que en 0002 y 0003. RLS
+-- decide qué filas ve un rol; el grant decide si puede siquiera intentarlo. Las
+-- otras tablas privadas llevan los dos y esta no era excepción.
+revoke all on public.rate_limits from anon, authenticated;
+
+-- Las firmas tienen que coincidir exactamente con las de arriba, incluido el
+-- `p_limit integer` que se añadió después: `revoke` sobre una firma que no
+-- existe aborta el script entero y deja la migración sin aplicar.
+revoke all on function bump_rate_limit(text, text, timestamptz, integer) from public, anon, authenticated;
 revoke all on function delete_expired_rate_limits(timestamptz) from public, anon, authenticated;

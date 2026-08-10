@@ -10,7 +10,8 @@
     "portal:doctor": "node scripts/portal-doctor.mjs",
     "portal:smoke": "node scripts/portal-smoke-test.mjs",
     "portal:health": "node scripts/portal-healthcheck.mjs",
-    "portal:qa": "node scripts/portal-qa.mjs"
+    "portal:qa": "node scripts/portal-qa.mjs",
+    "sql:lint": "node scripts/sql-lint.mjs"
   },
   "dependencies": {
     "@clerk/localizations": "^4.14.1",
