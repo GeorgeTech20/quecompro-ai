@@ -44,7 +44,17 @@ export async function fetchPortalToken(): Promise<string> {
   const res = await fetch("/api/portal-token", {
     credentials: "include",
     cache: "no-store",
+    // Sin esto, `fetch` sigue solo el redirect al login y devuelve el HTML de
+    // esa página con status 200: `res.ok` da `true`, el guard de abajo no
+    // salta y el `res.json()` revienta con "Unexpected token '<'". Con
+    // `manual`, un redirect llega como respuesta opaca (`type: "opaqueredirect"`,
+    // `status: 0`) y cae por el camino de error, que es lo correcto: si la
+    // sesión caducó, esto es un fallo de autenticación, no de formato.
+    redirect: "manual",
   });
+  if (res.type === "opaqueredirect" || res.status === 0) {
+    throw new Error("portal-token: sesión caducada");
+  }
   if (!res.ok) {
     // El `code` viene de Portal (`invalid_api_key`, `forbidden`…): sin él, un
     // 502 en consola no dice nada sobre qué variable está mal.

@@ -28,8 +28,30 @@ const isPublic = createRouteMatcher([
   "/manifest.webmanifest",
 ]);
 
+/**
+ * Una API no se redirige al login: se le contesta.
+ *
+ * Mandar un 307 a `/api/*` rompe a quien llama con `fetch`, que sigue el
+ * redirect solo y recibe el HTML del login con status 200. `res.ok` da `true`,
+ * el guard de error no salta, y el `res.json()` de después revienta con
+ * "Unexpected token '<'". El cliente nunca se entera de que lo que pasó fue
+ * que la sesión caducó.
+ */
+const isApi = createRouteMatcher(["/api/(.*)", "/trpc/(.*)"]);
+
 export default clerkMiddleware(async (auth, req) => {
   if (isPublic(req)) return NextResponse.next();
+
+  if (isApi(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    return NextResponse.next();
+  }
 
   // `protect()` a secas responde 404 a quien no ha iniciado sesión —
   // correcto para no filtrar qué rutas existen, pero pésimo para alguien que

@@ -11,7 +11,14 @@ import { z } from "zod";
 
 export const toolSchemas = {
   add_item: z.object({
-    title: z.string().min(2).describe("Nombre del producto tal como lo diría la persona, ej. 'pollo entero'"),
+    // Con tope: sin él, un título largo pedido al modelo se persiste entero y
+    // después entra en el prompt de esa casa en CADA mensaje de cualquiera,
+    // para siempre. El resto de rutas de escritura ya cortan a 120.
+    title: z
+      .string()
+      .min(2)
+      .max(80)
+      .describe("Nombre del producto tal como lo diría la persona, ej. 'pollo entero'"),
     qty: z.number().int().min(1).max(50).default(1).describe("Cantidad de unidades"),
     productId: z.string().optional().describe("Id del catálogo si aparece en el contexto; si no, omítelo"),
   }),

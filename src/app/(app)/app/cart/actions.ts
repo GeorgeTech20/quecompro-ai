@@ -155,6 +155,18 @@ const PHOTO_EXTENSIONS: Record<string, string> = {
   "image/heif": "heif",
 };
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+/** Mismo tope que el stepper de `CartItemRow`, pero del lado que manda. */
+const MAX_QTY = 99;
+/** Nombre del puesto y del mercado en la nota de precio. */
+const MAX_MARKET_LABEL = 60;
+/** Igual que la nota de un item (`setNoteAction`). */
+const MAX_NOTE = 280;
+
+/** Recorta un texto opcional; `null` si queda vacío. */
+function capText(value: string | null | undefined, max: number): string | null {
+  const trimmed = value?.trim().slice(0, max) ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 function toHit(product: ProductRow): CatalogHit {
   return {
@@ -257,9 +269,15 @@ export async function setQtyAction(
   const member = await requireMember(householdId);
   if (isActionError(member)) return member;
 
+  // El tope existía solo en el componente, y un límite que vive solo en el
+  // cliente no existe: la server action se llama a mano. Una cantidad de siete
+  // cifras corrompe el total y la proyección de presupuesto de toda la casa.
   const safeQty = Math.trunc(qty);
   if (!Number.isFinite(safeQty) || safeQty < 1) {
     return { ok: false, error: "La cantidad mínima es 1." };
+  }
+  if (safeQty > MAX_QTY) {
+    return { ok: false, error: `La cantidad máxima es ${MAX_QTY}.` };
   }
 
   try {
@@ -508,9 +526,13 @@ export async function recordMarketPriceAction(
       title: updated.title,
       unit: input.unit ?? updated.unit,
       price: input.price,
-      market: input.market ?? null,
-      stall: input.stall ?? null,
-      note: input.note ?? null,
+      // Estos tres iban sin tope en cliente ni servidor, contra columnas `text`
+      // sin límite. Una nota de 20 MB se guarda, y después cualquiera que abra
+      // el historial de precios de ese producto se descarga el texto entero y
+      // se le cuelga la pantalla. Es persistente y afecta a toda la casa.
+      market: capText(input.market, MAX_MARKET_LABEL),
+      stall: capText(input.stall, MAX_MARKET_LABEL),
+      note: capText(input.note, MAX_NOTE),
       recorded_by: member.profile.id,
     });
 

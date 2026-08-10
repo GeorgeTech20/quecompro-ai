@@ -29,8 +29,16 @@ export function round2(value: number): number {
 }
 
 /** Escapa los comodines de LIKE para que el usuario no los inyecte sin querer. */
+/**
+ * Escapa los comodines de un patrón `like`/`ilike`.
+ *
+ * `*` va en la lista además de `%` y `_` porque PostgREST lo traduce a `%`
+ * antes de llegar a Postgres: buscar `*` devolvía el catálogo entero. Hoy solo
+ * afecta a productos, que son públicos, pero este helper es compartido y el
+ * día que se use sobre una tabla privada ese comodín se salta el filtro.
+ */
 export function escapeLike(input: string): string {
-  return input.replace(/[\\%_]/g, (c) => `\\${c}`);
+  return input.replace(/[\\%_*]/g, (c) => `\\${c}`);
 }
 
 /** Quita duplicados y valores vacíos de una lista de ids. */

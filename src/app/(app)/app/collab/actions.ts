@@ -8,6 +8,7 @@ import {
   getHouseholdsForUser,
   getProfileById,
   leaveHousehold,
+  rotateInviteToken,
   setActiveHousehold,
 } from "@/lib/data";
 
@@ -79,6 +80,14 @@ export async function removeRoomie(profileId: string): Promise<MembershipResult>
     const targetProfile = await getProfileById(profileId);
 
     await leaveHousehold(viewer.household.id, profileId);
+
+    // Borrar la membresía no alcanza: el enlace de invitación que esa persona
+    // ya tiene en su chat sigue funcionando, y `joinByTokenAction` la vuelve a
+    // meter en la casa sin preguntar nada. Una expulsión que se deshace sola
+    // no es una expulsión. El precio es que el enlace viejo deja de servir
+    // para todos y hay que repartir uno nuevo — correcto: un enlace eterno que
+    // sobrevive a las expulsiones no es una invitación, es una llave maestra.
+    await rotateInviteToken(viewer.household.id);
 
     // Si esa era su casa activa queda apuntando a una casa que ya no puede
     // leer, así que se la movemos a otra suya — o a ninguna, y el layout la

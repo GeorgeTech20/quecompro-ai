@@ -48,6 +48,8 @@ next-env.d.ts
 
 # volcados de depuración: suelen acabar con claves dentro
 .tmp_*
+# scripts/portal-extract-token.mjs escribe aquí JWT de sesión
+tmp_tokens/
 
 # supabase
 supabase/.temp
