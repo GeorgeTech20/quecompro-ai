@@ -52,6 +52,26 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   category: "shopping",
   formatDetection: { email: false, address: false, telephone: false },
+  alternates: {
+    canonical: "/",
+    languages: { "es-PE": "/", "x-default": "/" },
+  },
+  /**
+   * `max-image-preview: large` es el que hace que Google muestre la captura del
+   * hero en grande en vez de una miniatura al costado. Sin esa línea la imagen
+   * existe pero sale del tamaño de una estampilla.
+   */
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     title: "QuéComproo — la despensa viva de tu casa",
     description:
@@ -59,12 +79,24 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_PE",
     siteName: SITE_NAME,
+    url: "/",
   },
   twitter: {
     card: "summary_large_image",
     title: "QuéComproo, tu carrito de compras compartido",
     description:
       "Compra con tu casa en tiempo real, compara precios y cuida el presupuesto con ayuda de IA.",
+  },
+  /**
+   * Señales de país. Los `geo.*` son de la vieja escuela y ningún buscador los
+   * pondera hoy, pero los precios son de supermercados peruanos en soles: que
+   * quede dicho en todos los canales disponibles cuesta tres líneas.
+   */
+  other: {
+    "geo.region": "PE",
+    "geo.placename": "Lima, Perú",
+    "geo.position": "-12.0464;-77.0428",
+    ICBM: "-12.0464, -77.0428",
   },
 };
 

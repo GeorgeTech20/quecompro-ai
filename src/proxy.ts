@@ -18,6 +18,14 @@ const isPublic = createRouteMatcher([
   "/signup(.*)",
   "/invite/(.*)",
   "/api/webhooks/(.*)",
+  // Los archivos que leen los buscadores. El `matcher` de abajo deja pasar las
+  // extensiones de imagen y `.webmanifest`, pero no `.txt` ni `.xml`, así que
+  // sin esta línea Googlebot pide /robots.txt y recibe un 307 al login: no
+  // puede leer ni las reglas ni el mapa del sitio, y la landing no se indexa.
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
+  "/manifest.webmanifest",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
