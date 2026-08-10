@@ -30,6 +30,35 @@ export function normalizeStoreDomain(store: string): StoreDomain | null {
   return STORE_ALIASES[store.trim().toLocaleLowerCase("es-PE")] ?? null;
 }
 
+/**
+ * Deja pasar solo enlaces `https://` a una de las cuatro tiendas.
+ *
+ * Las cotizaciones llegan por el canal de realtime, y ahí puede publicar
+ * cualquier miembro de la casa desde la consola del navegador. Sin este filtro,
+ * un chip que dice "Fuentes verificadas" podía apuntar al dominio del atacante:
+ * phishing con el sello de confianza de la app. `javascript:` ya lo neutraliza
+ * React, pero un `https://` hostil pasa sin problema.
+ *
+ * Se comprueba el host, no el prefijo del texto: `https://tottus.com.pe.mal.io`
+ * empieza igual y no es Tottus.
+ */
+export function safeStoreUrl(raw: string | undefined | null): string | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:") return undefined;
+
+  const host = url.hostname.toLowerCase();
+  const allowed = STORE_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+  return allowed ? url.toString() : undefined;
+}
+
 export function storeSearchUrl(store: string, rawQuery: string): string | undefined {
   const domain = normalizeStoreDomain(store);
   const query = rawQuery.trim().replace(/\s+/g, " ").slice(0, 80);

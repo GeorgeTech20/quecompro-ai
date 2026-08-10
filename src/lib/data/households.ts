@@ -15,7 +15,40 @@ import type {
 import { unwrap, unwrapRows, uniqueIds } from "./shared";
 
 const HOUSEHOLD_COLUMNS =
+  "id, name, monthly_budget, currency, invite_token, invite_expires_at, created_at, updated_at";
+/** Sin `invite_expires_at`: para bases donde la migración 0008 aún no corrió. */
+const LEGACY_HOUSEHOLD_COLUMNS =
   "id, name, monthly_budget, currency, invite_token, created_at, updated_at";
+
+let inviteExpiryAvailable: boolean | undefined;
+
+/**
+ * Qué columnas se pueden pedir de `households`.
+ *
+ * Mismo patrón que `profileColumns()`, y por el mismo motivo: el código se
+ * despliega desde git y las migraciones se aplican a mano, así que hay una
+ * ventana en la que el código nuevo habla con el esquema viejo. Pedir una
+ * columna que no existe no degrada nada — revienta la consulta entera, y
+ * `households` se lee en cada pantalla de la app.
+ */
+async function householdColumns(): Promise<string> {
+  if (inviteExpiryAvailable !== undefined) {
+    return inviteExpiryAvailable ? HOUSEHOLD_COLUMNS : LEGACY_HOUSEHOLD_COLUMNS;
+  }
+
+  const probe = await supabaseAdmin().from("households").select("invite_expires_at").limit(0);
+  inviteExpiryAvailable = !probe.error;
+  if (!inviteExpiryAvailable) {
+    console.warn("[data:households] migración 0008 pendiente; las invitaciones no caducan todavía.");
+  }
+  return inviteExpiryAvailable ? HOUSEHOLD_COLUMNS : LEGACY_HOUSEHOLD_COLUMNS;
+}
+
+/** La fila sin la columna nueva se normaliza a "no caduca". */
+function normalizeHousehold(row: HouseholdRow | null): HouseholdRow | null {
+  if (!row) return null;
+  return { ...row, invite_expires_at: row.invite_expires_at ?? null };
+}
 
 const PROFILE_COLUMNS =
   "id, clerk_id, email, full_name, avatar_url, whatsapp_phone, occupation, shopping_goals, diet_tags, allergies, active_household_id, created_at, updated_at";
@@ -182,21 +215,45 @@ export async function setActiveHousehold(
 export async function getHouseholdById(householdId: string): Promise<HouseholdRow | null> {
   const result = await supabaseAdmin()
     .from("households")
-    .select(HOUSEHOLD_COLUMNS)
+    .select(await householdColumns())
     .eq("id", householdId)
     .maybeSingle();
 
-  return unwrap<HouseholdRow | null>(result, "getHouseholdById");
+  return normalizeHousehold(unwrap<HouseholdRow | null>(result, "getHouseholdById"));
 }
 
+/** Cuánto vale un enlace de invitación desde que se crea. */
+export const INVITE_TTL_DAYS = 7;
+
+export function inviteExpiryFromNow(now = new Date()): string {
+  return new Date(now.getTime() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Busca la casa por su token de invitación, **si el enlace sigue vigente**.
+ *
+ * El filtro de caducidad va aquí y no en el llamante a propósito: es la única
+ * puerta por la que se entra a una casa sin que nadie te agregue, y un permiso
+ * que se comprueba en la pantalla se olvida en la siguiente pantalla.
+ *
+ * `invite_expires_at` nulo significa "casa anterior a la migración 0008", y se
+ * acepta: la 0008 les puso ventana a todas, así que en la práctica solo pasa
+ * entre el despliegue del código y el de la migración.
+ */
 export async function getHouseholdByInviteToken(token: string): Promise<HouseholdRow | null> {
   const result = await supabaseAdmin()
     .from("households")
-    .select(HOUSEHOLD_COLUMNS)
+    .select(await householdColumns())
     .eq("invite_token", token)
     .maybeSingle();
 
-  return unwrap<HouseholdRow | null>(result, "getHouseholdByInviteToken");
+  const household = normalizeHousehold(unwrap<HouseholdRow | null>(result, "getHouseholdByInviteToken"));
+  if (!household) return null;
+
+  if (household.invite_expires_at && new Date(household.invite_expires_at).getTime() < Date.now()) {
+    return null;
+  }
+  return household;
 }
 
 /** Crea la casa y deja al creador como `owner` en el mismo paso. */
@@ -204,6 +261,16 @@ export async function createHousehold(
   input: HouseholdInsert,
   ownerProfileId: string,
 ): Promise<HouseholdRow> {
+  // El sondeo va PRIMERO y en su propia sentencia. Si se dejara para el
+  // `.select(await householdColumns())` de abajo, JS evalúa antes el objeto de
+  // `.insert(...)`, y ahí `inviteExpiryAvailable` todavía es `undefined` —
+  // falsy — así que el spread se saltaba `invite_expires_at`. En el alta esto
+  // pasaba siempre: `resolveViewer()` devuelve `household: null` para un perfil
+  // nuevo, así que este INSERT es la primera consulta a `households` de la
+  // lambda y la casa nacía con enlace de invitación eterno.
+  const columns = await householdColumns();
+  const conExpiry = columns === HOUSEHOLD_COLUMNS;
+
   const result = await supabaseAdmin()
     .from("households")
     .insert({
@@ -211,11 +278,12 @@ export async function createHousehold(
       monthly_budget: input.monthly_budget ?? 1200,
       currency: input.currency ?? "PEN",
       invite_token: input.invite_token ?? newInviteToken(),
+      ...(conExpiry ? { invite_expires_at: inviteExpiryFromNow() } : {}),
     })
-    .select(HOUSEHOLD_COLUMNS)
+    .select(columns)
     .single();
 
-  const household = unwrap<HouseholdRow>(result, "createHousehold");
+  const household = normalizeHousehold(unwrap<HouseholdRow>(result, "createHousehold")) as HouseholdRow;
   await joinHousehold(household.id, ownerProfileId, "owner");
   await setActiveHousehold(ownerProfileId, household.id);
   return household;
@@ -233,18 +301,27 @@ export async function updateHouseholdBudget(
     .from("households")
     .update({ monthly_budget: monthlyBudget })
     .eq("id", householdId)
-    .select(HOUSEHOLD_COLUMNS)
+    .select(await householdColumns())
     .maybeSingle();
 
-  return unwrap<HouseholdRow | null>(result, "updateHouseholdBudget");
+  return normalizeHousehold(unwrap<HouseholdRow | null>(result, "updateHouseholdBudget"));
 }
 
-/** Invalida el link viejo de invitación y devuelve el nuevo. */
+/** Invalida el link viejo de invitación y devuelve el nuevo, con ventana nueva. */
 export async function rotateInviteToken(householdId: string): Promise<string | null> {
   const token = newInviteToken();
+  // Igual que en `createHousehold`: el sondeo antes de armar el payload. Aquí
+  // hoy se salva de milagro, porque sus dos llamantes ya pasaron por
+  // `getHouseholdById` y dejaron la bandera puesta — pero eso es suerte, no
+  // diseño, y se rompe con el primer llamante nuevo.
+  const conExpiry = (await householdColumns()) === HOUSEHOLD_COLUMNS;
+
   const result = await supabaseAdmin()
     .from("households")
-    .update({ invite_token: token })
+    .update({
+      invite_token: token,
+      ...(conExpiry ? { invite_expires_at: inviteExpiryFromNow() } : {}),
+    })
     .eq("id", householdId)
     .select("invite_token")
     .maybeSingle();
@@ -309,7 +386,7 @@ export async function getHouseholdsForUser(profileId: string): Promise<Household
 
   const result = await supabaseAdmin()
     .from("households")
-    .select(HOUSEHOLD_COLUMNS)
+    .select(await householdColumns())
     .in("id", householdIds)
     .order("created_at", { ascending: true });
 

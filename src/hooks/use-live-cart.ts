@@ -17,6 +17,7 @@ import {
 } from "@/app/(app)/app/cart/actions";
 import { useToast } from "@/components/ui";
 import { prepareImageUpload } from "@/lib/images/prepare-upload";
+import { safeStoreUrl } from "@/lib/prices/store-links";
 import {
   channels,
   type CartEvent,
@@ -338,7 +339,8 @@ function applyEvent(state: CartState, event: CartEvent, at: number): CartState {
       const { type: _type, ...verdict } = event;
       return {
         ...state,
-        verdicts: { ...state.verdicts, [event.itemId]: verdict },
+        // Mismo motivo que en price-snapshot: esto entra por el canal.
+        verdicts: { ...state.verdicts, [event.itemId]: sanitizeVerdict(verdict) },
         latestVerdictItemId: event.itemId,
         stamps: { ...state.stamps, verdict: { ...state.stamps.verdict, [event.itemId]: at } },
       };
@@ -354,7 +356,16 @@ function applyEvent(state: CartState, event: CartEvent, at: number): CartState {
       delete pricePending[event.itemId];
       return {
         ...state,
-        quotes: { ...state.quotes, [event.itemId]: event.quotes },
+        // Saneadas en el borde del canal, no al parsear la respuesta HTTP:
+        // esta es la rama por la que llegan de verdad. Con Portal sano, el
+        // camino del fetch casi nunca pinta nada, así que validar solo allí
+        // dejaba pasar el 100% de lo que ve el usuario.
+        quotes: {
+          ...state.quotes,
+          [event.itemId]: (Array.isArray(event.quotes) ? event.quotes : [])
+            .map(readQuote)
+            .filter((quote): quote is PriceQuote => quote !== null),
+        },
         productKeys: { ...state.productKeys, [event.itemId]: event.productKey },
         pricePending,
         stamps: { ...state.stamps, quote: { ...state.stamps.quote, [event.itemId]: at } },
@@ -558,6 +569,42 @@ function readEvaluateResponse(raw: unknown): EvaluateResponse | null {
   };
 }
 
+// --- saneo de lo que llega por el canal ------------------------------------
+
+/**
+ * Todo lo que sale de `message.content` es entrada hostil.
+ *
+ * `useChannel<CartEvent>` no valida nada: el genérico se borra al compilar, así
+ * que el tipo es una promesa, no una comprobación. En este canal publica
+ * cualquiera que tenga un token de Portal y sepa el id de la casa, y hoy el
+ * token no está acotado por canal.
+ *
+ * El tope de longitud no es cosmético: un texto de megabytes que entra al
+ * estado se pinta en el DOM de todos los que tengan el carrito abierto, y con
+ * `history: 50` se reaplica cada vez que alguien abre la pantalla.
+ */
+const CHANNEL_TEXT_MAX = 160;
+
+const capChannelText = (value: unknown, max = CHANNEL_TEXT_MAX): string =>
+  typeof value === "string" ? value.slice(0, max) : "";
+
+/** Recorta los textos del veredicto; los números y el `productId` se validan en el servidor al aceptar el swap. */
+function sanitizeVerdict(verdict: CartVerdict): CartVerdict {
+  return {
+    ...verdict,
+    reason: capChannelText(verdict.reason, 280),
+    ...(verdict.cheaper
+      ? {
+          cheaper: {
+            ...verdict.cheaper,
+            title: capChannelText(verdict.cheaper.title),
+            store: capChannelText(verdict.cheaper.store, 60),
+          },
+        }
+      : {}),
+  };
+}
+
 // --- respuesta de /api/price-check ----------------------------------------
 
 type PriceResponse = { quotes: PriceQuote[]; publishedToChannel?: boolean };
@@ -570,7 +617,10 @@ function readQuote(raw: unknown): PriceQuote | null {
     store: quote.store,
     price: quote.price,
     unit: typeof quote.unit === "string" ? quote.unit : "un",
-    url: typeof quote.url === "string" && /^https:\/\//.test(quote.url) ? quote.url : undefined,
+    // El host tiene que ser una de las cuatro tiendas, no basta con que empiece
+    // por https: estas cotizaciones también llegan por el canal, donde publica
+    // cualquiera de la casa.
+    url: safeStoreUrl(typeof quote.url === "string" ? quote.url : undefined),
     fetchedAt: typeof quote.fetchedAt === "string" ? quote.fetchedAt : new Date().toISOString(),
     // El origen no se maquilla: si no viene, se asume dataset.
     source: quote.source === "live" ? "live" : "dataset",

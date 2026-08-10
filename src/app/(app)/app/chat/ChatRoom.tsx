@@ -26,6 +26,7 @@ import {
   EmptyState,
   Money,
 } from "@/components/ui";
+import { safeStoreUrl } from "@/lib/prices/store-links";
 import { channels, type AssistantAction, type ChatEvent, type RecipeSuggestion } from "@/lib/realtime/channels";
 
 /**
@@ -226,6 +227,9 @@ export function ChatRoom({
 
 // --- Burbujas --------------------------------------------------------------
 
+/** El `sub` del token con el que publica el servidor (`server-publish.ts`). */
+const ASSISTANT_SENDER_ID = "assistant";
+
 function ChatBubble({
   message,
   own,
@@ -237,6 +241,24 @@ function ChatBubble({
 }) {
   const event = message.content;
   const at = formatTime(new Date(message.timestamp));
+
+  /**
+   * Quién lo mandó de verdad, según el sobre que firma Portal — no según lo que
+   * diga el contenido.
+   *
+   * El `type` del evento lo escribe quien publica, y en este canal publica
+   * cualquier miembro de la casa desde la consola del navegador. Sin esta
+   * comprobación, un roomie (o alguien recién expulsado, cuyo token vive hasta
+   * una hora más) podía mandar un `assistant-message` que aparecía con el
+   * avatar del Despensero y su chip de "fuentes verificadas". El `sender.id`
+   * sí lo pone el servidor de Portal a partir del token.
+   */
+  const fromAssistant = message.sender.id === ASSISTANT_SENDER_ID;
+
+  // El guard va antes de las ramas y cubre TODOS los tipos del asistente, no
+  // solo `assistant-message`: `recipe-suggestion` también se pinta con su cara
+  // y su autoridad, y dejarlo fuera era la misma suplantación por otra puerta.
+  if (!fromAssistant && event.type !== "user-message") return null;
 
   if (event.type === "user-message") {
     return (
@@ -264,11 +286,15 @@ function ChatBubble({
   if (event.type === "assistant-message") {
     const sources: Citation[] = (event.actions ?? []).flatMap((action) =>
       action.kind === "price-check"
-        ? action.quotes.flatMap((quote) =>
-            quote.url
-              ? [{ label: quote.store, href: quote.url, detail: `S/ ${quote.price.toFixed(2)}` }]
-              : [],
-          )
+        ? action.quotes.flatMap((quote) => {
+            // El enlace tiene que ser de una de las cuatro tiendas. Un
+            // `https://` cualquiera bajo el sello "fuentes verificadas" es
+            // phishing con nuestra credibilidad.
+            const href = safeStoreUrl(quote.url);
+            return href
+              ? [{ label: quote.store, href, detail: `S/ ${quote.price.toFixed(2)}` }]
+              : [];
+          })
         : [],
     );
     const visibleActions = (event.actions ?? []).filter((action) => action.kind !== "price-check");
@@ -364,9 +390,12 @@ function ActionChip({ action }: { action: AssistantAction }) {
         </Chip>
       );
     case "set-budget":
+      // El asistente propone, no aplica: el enlace lleva a Ajustes y ahí lo
+      // confirma una persona. Antes el monto ya estaba escrito cuando este
+      // botón aparecía, y el texto mentía por omisión.
       return (
         <LinkButton href="/app/settings" size="sm" variant="secondary">
-          Poner presupuesto en <Money value={action.monthly} round className="ml-1" />
+          Te propone <Money value={action.monthly} round className="mx-1" /> de presupuesto
         </LinkButton>
       );
     case "price-check":

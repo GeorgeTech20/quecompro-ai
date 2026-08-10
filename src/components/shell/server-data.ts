@@ -252,7 +252,16 @@ export async function saveProfile(
  */
 export async function inviteToken(householdId: string): Promise<string> {
   const household = await getHouseholdById(householdId);
-  if (household?.invite_token) return household.invite_token;
+
+  // Un enlace vencido se renueva en vez de devolverse: quien pulsa "Invitar"
+  // quiere un enlace que funcione, y devolver el caducado daría un link que
+  // falla al abrirlo sin decir por qué.
+  const vigente =
+    household?.invite_token &&
+    (!household.invite_expires_at ||
+      new Date(household.invite_expires_at).getTime() > Date.now());
+
+  if (vigente) return household.invite_token as string;
 
   const token = await rotateInviteToken(householdId);
   if (!token) throw new Error(`[invite] la casa ${householdId} no existe`);

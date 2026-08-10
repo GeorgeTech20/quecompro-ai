@@ -3,6 +3,7 @@ import { z } from "zod";
 import { loadCart, loadMonthSpend, findCheaper, findRecipes, type CartItemRow } from "@/lib/ai/data-contract";
 import { projectMonthEnd } from "@/lib/ai/context";
 import { membershipGate } from "@/lib/ai/guard";
+import { checkRateLimit, rateLimitResponse } from "@/lib/ai/rate-limit";
 import { gradeItem } from "@/lib/ai/health";
 import type { CartEvent } from "@/lib/realtime/channels";
 import { publishCartEvent, publishChatEvent } from "@/lib/realtime/server-publish";
@@ -59,14 +60,24 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
+    // El detalle del esquema se queda en el servidor: publicarlo dibuja el
+    // contrato interno (nombres de campos, tipos, topes) para quien esté
+    // mapeando la API.
+    console.warn(`[api] cuerpo inválido: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+    return Response.json({ error: "Datos incompletos." }, { status: 400 });
   }
   const { householdId, itemId, productId, title, price, qty } = parsed.data;
 
   // Sin excepciones: la identidad viene de la sesión y la pertenencia se
   // comprueba siempre. Un veredicto también revela qué hay en el carrito.
-  const { denied } = await membershipGate(householdId);
+  const { denied, identity } = await membershipGate(householdId);
   if (denied) return denied;
+
+  const rate = await checkRateLimit("evaluate-item", {
+    profileId: identity.profileId,
+    householdId,
+  });
+  if (!rate.ok) return rateLimitResponse(rate);
 
   if (shouldSkip(itemId)) {
     return Response.json({ ok: true, deduped: true });

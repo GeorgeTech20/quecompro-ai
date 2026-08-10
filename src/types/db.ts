@@ -43,6 +43,8 @@ export type HouseholdRow = {
   monthly_budget: number;
   currency: string;
   invite_token: string | null;
+  /** Cuándo deja de valer `invite_token`. `null` = casas anteriores a 0008. */
+  invite_expires_at: string | null;
   created_at: string;
   updated_at: string;
 };

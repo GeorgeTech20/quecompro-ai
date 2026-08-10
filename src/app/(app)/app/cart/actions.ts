@@ -26,6 +26,7 @@ import type {
 } from "@/types/db";
 import type { CartItemPayload } from "@/lib/realtime/channels";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { assertRealImage } from "@/lib/images/sniff";
 
 /**
  * Escrituras del carrito.
@@ -329,17 +330,27 @@ export async function setPurchasedAction(
 
     const photo = formData?.get("photo");
     let uploadedPath: string | null = null;
-    if (photo instanceof File && photo.size > 0) {
-      const extension = PHOTO_EXTENSIONS[photo.type];
-      if (!extension) return { ok: false, error: "Usa una foto JPG, PNG, WebP o HEIC." };
+    // Solo se sube si de verdad se está marcando la compra. Con `purchased:
+    // false` el `photoPath` acaba en `null`, así que el objeto quedaba en el
+    // bucket sin que ninguna fila lo apuntara: nadie lo ve, nadie lo borra, y
+    // repetido es almacenamiento gratis ilimitado en la cuenta de Supabase.
+    // Una foto sin compra no es evidencia de nada.
+    if (photo instanceof File && photo.size > 0 && purchased) {
       if (photo.size > MAX_PHOTO_BYTES) {
         return { ok: false, error: "La foto pesa más de 8 MB." };
       }
+      // El tipo sale de los primeros bytes, no de lo que declara el navegador:
+      // `photo.type` lo pone el cliente y se puede escribir a mano. Sin esto se
+      // subía cualquier binario etiquetado `image/jpeg`.
+      const sniffed = await assertRealImage(photo);
+      if (!sniffed.ok) return { ok: false, error: sniffed.error };
+
+      const extension = PHOTO_EXTENSIONS[sniffed.type];
       uploadedPath = `${householdId}/${itemId}/${crypto.randomUUID()}.${extension}`;
       const upload = await supabaseAdmin()
         .storage.from("purchase-evidence")
         .upload(uploadedPath, await photo.arrayBuffer(), {
-          contentType: photo.type,
+          contentType: sniffed.type,
           cacheControl: "3600",
           upsert: false,
         });

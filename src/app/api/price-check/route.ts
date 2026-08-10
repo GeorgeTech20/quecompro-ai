@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { membershipGate } from "@/lib/ai/guard";
+import { checkRateLimit, rateLimitResponse } from "@/lib/ai/rate-limit";
 import { cheapestQuote, lookupPrices } from "@/lib/prices";
 import { publishCartEvent } from "@/lib/realtime/server-publish";
 
@@ -34,7 +35,11 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
+    // El detalle del esquema se queda en el servidor: publicarlo dibuja el
+    // contrato interno (nombres de campos, tipos, topes) para quien esté
+    // mapeando la API.
+    console.warn(`[api] cuerpo inválido: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+    return Response.json({ error: "Datos incompletos." }, { status: 400 });
   }
   const { householdId, productKey, itemId, query } = parsed.data;
 
@@ -43,6 +48,14 @@ export async function POST(request: Request): Promise<Response> {
   const { denied, identity } = await membershipGate(householdId);
   if (denied) return denied;
   const userId = identity.profileId;
+
+  // El límite va después de comprobar la pertenencia: primero se sabe quién
+  // eres, y recién entonces tiene sentido contarte las peticiones.
+  const rate = await checkRateLimit("price-check", {
+    profileId: identity.profileId,
+    householdId,
+  });
+  if (!rate.ok) return rateLimitResponse(rate);
 
   const anchor = itemId ?? productKey;
 

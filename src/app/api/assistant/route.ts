@@ -5,17 +5,17 @@ import type {
 import { z } from "zod";
 
 import { degradedReply, isModelAvailable, openaiClient, openaiModel } from "@/lib/ai/client";
-import { buildAssistantContext, type AssistantContext } from "@/lib/ai/context";
+import { buildAssistantContext, flatten, type AssistantContext } from "@/lib/ai/context";
 import {
   dropCartItem,
   findRecipes,
   insertCartItem,
-  setBudget,
   type ProductRow,
 } from "@/lib/ai/data-contract";
 import { membershipGate } from "@/lib/ai/guard";
+import { checkRateLimit, rateLimitResponse } from "@/lib/ai/rate-limit";
 import { gradeItem } from "@/lib/ai/health";
-import { buildSystemMessage } from "@/lib/ai/system-prompt";
+import { buildContextMessage, buildSystemMessage } from "@/lib/ai/system-prompt";
 import { openAiTools, parseToolCall, type ToolArgs } from "@/lib/ai/tools";
 import { cheapestQuote, lookupPrices } from "@/lib/prices";
 import type { AssistantAction } from "@/lib/realtime/channels";
@@ -90,7 +90,7 @@ async function runTool(
       });
 
       return {
-        result: { added: row.title, qty: row.qty, price: row.price, health: grade.grade },
+        result: { added: flatten(row.title), qty: row.qty, price: row.price, health: grade.grade },
         actions: [{ kind: "add-item", title: row.title, price: row.price, qty: row.qty, productId: args.productId }],
       };
     }
@@ -138,7 +138,7 @@ async function runTool(
       });
 
       return {
-        result: { swapped: current.title, to: target.title, savings },
+        result: { swapped: flatten(current.title), to: flatten(target.title), savings },
         actions: [
           { kind: "swap-item", itemId: current.id, toProductId: target.id, toTitle: target.title, savings },
         ],
@@ -147,9 +147,17 @@ async function runTool(
 
     case "set_budget": {
       const args = call.args as ToolArgs["set_budget"];
-      const applied = await setBudget(householdId, args.monthly);
+      // No escribe. El presupuesto es un ajuste de toda la casa, y hasta hace
+      // poco bastaba con que el modelo decidiera llamar esta herramienta para
+      // cambiarlo — cualquiera que colara texto en el contexto lo movía. Ahora
+      // devuelve una propuesta y la persona la aplica desde Ajustes, que es lo
+      // que la interfaz ya venía mostrando (un enlace, no un aviso de hecho).
       return {
-        result: { monthly: args.monthly, applied },
+        result: {
+          proposed: args.monthly,
+          applied: false,
+          note: "Propuesta. La persona lo confirma en Ajustes; tú no lo cambiaste.",
+        },
         actions: [{ kind: "set-budget", monthly: args.monthly }],
       };
     }
@@ -161,7 +169,11 @@ async function runTool(
           people: args.people,
           weekBudget: args.budget ?? null,
           avoid: args.avoid,
-          cart: context.cart.items.map((item) => ({ title: item.title, qty: item.qty, price: item.price })),
+          cart: context.cart.items.map((item) => ({
+            title: flatten(item.title),
+            qty: item.qty,
+            price: item.price,
+          })),
           spentThisMonth: context.spend.spent,
           monthlyBudget: context.spend.budget ?? null,
         },
@@ -235,7 +247,11 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Datos incompletos.", issues: parsed.error.issues }, { status: 400 });
+    // El detalle del esquema se queda en el servidor: publicarlo dibuja el
+    // contrato interno (nombres de campos, tipos, topes) para quien esté
+    // mapeando la API.
+    console.warn(`[api] cuerpo inválido: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+    return Response.json({ error: "Datos incompletos." }, { status: 400 });
   }
   const { householdId, message } = parsed.data;
 
@@ -243,6 +259,14 @@ export async function POST(request: Request): Promise<Response> {
   const { denied, identity } = await membershipGate(householdId);
   if (denied) return denied;
   const userId = identity.profileId;
+
+  // El límite va después de comprobar la pertenencia: primero se sabe quién
+  // eres, y recién entonces tiene sentido contarte las peticiones.
+  const rate = await checkRateLimit("assistant", {
+    profileId: identity.profileId,
+    householdId,
+  });
+  if (!rate.ok) return rateLimitResponse(rate);
 
   // El efecto "vivo": las dos pantallas ven que la IA arrancó antes de que el
   // modelo devuelva nada. Ephemeral porque no debe quedar en el historial.
@@ -281,8 +305,13 @@ export async function POST(request: Request): Promise<Response> {
       topSaving: null,
     }).text;
   } else {
+    // Tres mensajes y no dos: el estado de la casa va aparte, con rol `user` y
+    // entre etiquetas. Dentro hay títulos y notas que escribieron personas, y
+    // mientras eso viajaba en el mensaje de sistema el modelo no podía
+    // distinguir una nota de una orden nuestra.
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: buildSystemMessage(context.text) },
+      { role: "system", content: buildSystemMessage() },
+      { role: "user", content: buildContextMessage(context.text) },
       { role: "user", content: message },
     ];
 

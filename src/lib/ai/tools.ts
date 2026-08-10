@@ -59,7 +59,8 @@ export type ToolArgs = {
 const DESCRIPTIONS: Record<ToolName, string> = {
   add_item: "Agrega un producto al carrito compartido de la casa. Úsala siempre que te pidan comprar o anotar algo.",
   swap_item: "Reemplaza un item del carrito por una alternativa más barata o más sana del catálogo.",
-  set_budget: "Fija el presupuesto mensual del hogar en soles.",
+  set_budget:
+    "PROPONE un presupuesto mensual. No lo cambia: deja el monto listo para que la persona lo confirme en Ajustes. Al contarlo, di que se lo dejaste propuesto, nunca que ya lo pusiste.",
   plan_week: "Arma el plan de compras de la semana con lo que ya hay y lo que falta.",
   get_live_prices: "Consulta precios frescos de las tiendas para un producto. Úsala cuando pregunten dónde está más barato.",
   suggest_recipe: "Propone una receta que el carrito ya cubre casi entera.",
