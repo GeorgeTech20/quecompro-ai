@@ -10,8 +10,11 @@ import type {
 } from "@/types/db";
 import { escapeLike, round2, unwrap, unwrapRows, uniqueIds } from "./shared";
 
+// Sin `image_url`: el catálogo se lee por nombre, precio y tienda. Las fotos de
+// producto nunca cuadraron con el dato real (marca distinta, envase distinto), y
+// una foto equivocada al lado de un precio hace dudar del precio.
 const PRODUCT_COLUMNS =
-  "id, product_key, name, brand, store, price, unit, category, image_url, health_grade, created_at, updated_at";
+  "id, product_key, name, brand, store, price, unit, category, health_grade, created_at, updated_at";
 
 const MACRO_COLUMNS =
   "product_id, per_grams, kcal, protein_g, carbs_g, fat_g, fiber_g, sodium_mg, created_at, updated_at";

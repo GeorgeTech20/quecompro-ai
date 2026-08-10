@@ -33,7 +33,6 @@ export type PantryItem = {
   key: string;
   productId: string | null;
   name: string;
-  imageUrl: string | null;
   grade: HealthGrade | null;
   /** Unidades acumuladas del mes (compras cerradas + carrito abierto). */
   qty: number;

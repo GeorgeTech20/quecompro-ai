@@ -98,73 +98,57 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   );
 }
 
+/**
+ * Ficha de producto, sin foto.
+ *
+ * Las fotos venían de otra marca o de otro envase que el precio que estaban
+ * acompañando, y una imagen equivocada al lado de una cifra hace dudar de la
+ * cifra. Lo que se compara acá es precio por 100 g entre tiendas, así que la
+ * tarjeta se ordena por eso: nombre, precio, comparador, tienda.
+ */
 function ProductCard({ product, householdId }: { product: ProductRow; householdId: string }) {
   const per100 = pricePer100g(product.price, product.unit);
 
   return (
-    <Card padding="none" className="group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-raised">
-      <div className="relative aspect-square overflow-hidden bg-brand-50">
-        {product.image_url ? (
-          <>
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="size-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" />
-          </>
-        ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-3 px-8 pb-12 text-center text-ink-faint">
-            <span className="grid size-14 place-items-center rounded-full bg-white">
-              <BasketIcon className="size-6" />
-            </span>
-            <p className="line-clamp-2 text-sm font-medium text-ink-muted">{product.name}</p>
-            <p className="text-xs">Imagen pendiente de verificar</p>
-          </div>
-        )}
-        <div className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-2">
-          <Badge tone="neutral" className="border-white/50 bg-white/85 text-ink backdrop-blur">{product.store}</Badge>
-          {product.health_grade ? <HealthChip grade={product.health_grade} size="sm" showLabel={false} /> : null}
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-5">
+    <Card
+      padding="md"
+      className="flex h-full flex-col gap-4 transition-transform duration-200 hover:-translate-y-1 hover:shadow-raised"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-ink" title={product.name}>
+          <p className="line-clamp-2 text-sm font-semibold text-ink" title={product.name}>
             {product.name}
           </p>
-          <p className="mt-0.5 truncate text-xs text-ink-muted">
+          <p className="mt-1 truncate text-xs text-ink-muted">
             {product.brand ? `${product.brand} · ` : ""}
             {categoryLabel(product.category)}
           </p>
         </div>
+        {product.health_grade ? (
+          <HealthChip grade={product.health_grade} size="sm" showLabel={false} />
+        ) : null}
       </div>
 
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xl font-semibold tracking-tight text-ink">
-            <Money value={product.price} />
-            <span className="text-sm font-normal text-ink-muted">
-              {" "}
-              / {unitLabel(product.unit)}
-            </span>
-          </p>
-          <p className="mt-0.5 text-xs text-ink-faint">
-            {per100 !== null
-              ? `${formatPEN(per100)} por 100 g`
-              : "Se vende por unidad: no hay precio por 100 g"}
-          </p>
-        </div>
+      <div>
+        <p className="text-2xl font-semibold tracking-tight text-ink">
+          <Money value={product.price} />
+          <span className="text-sm font-normal text-ink-muted"> / {unitLabel(product.unit)}</span>
+        </p>
+        <p className="mt-0.5 text-xs text-ink-faint">
+          {per100 !== null
+            ? `${formatPEN(per100)} por 100 g`
+            : "Se vende por unidad: no hay precio por 100 g"}
+        </p>
       </div>
 
-      <div className="mt-auto flex justify-end pt-1">
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border-subtle pt-4">
+        <Badge tone="neutral">{product.store}</Badge>
         <AddToCartButton
           productId={product.id}
           householdId={householdId}
           title={product.name}
           price={product.price}
         />
-      </div>
       </div>
     </Card>
   );

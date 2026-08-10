@@ -112,7 +112,6 @@ export type ProductRow = {
   price: number;
   unit: string;
   category: string;
-  image_url: string | null;
   health_grade: HealthGrade | null;
   created_at: string;
   updated_at: string;

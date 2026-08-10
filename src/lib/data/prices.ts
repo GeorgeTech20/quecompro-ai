@@ -14,7 +14,7 @@ export const PRICE_TTL_MINUTES = 45;
 
 const SNAPSHOT_COLUMNS = "id, product_key, store, price, unit, source, fetched_at";
 const PRODUCT_COLUMNS =
-  "id, product_key, name, brand, store, price, unit, category, image_url, health_grade, created_at, updated_at";
+  "id, product_key, name, brand, store, price, unit, category, health_grade, created_at, updated_at";
 
 function ttlCutoffIso(now: Date = new Date()): string {
   return new Date(now.getTime() - PRICE_TTL_MINUTES * 60_000).toISOString();

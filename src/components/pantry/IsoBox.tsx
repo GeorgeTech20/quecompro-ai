@@ -39,15 +39,16 @@ function iconFor(item: PantryItem) {
   return IconPackage;
 }
 
+/**
+ * El sello de la caja. Siempre un icono por categoría: las fotos de producto
+ * salían de otra marca o de otro envase y la caja terminaba mintiendo. Un
+ * icono no promete que sea *ese* empaque, solo dice de qué es.
+ */
 export function ProductArtifact({ item, className = "" }: { item: PantryItem; className?: string }) {
   const Icon = iconFor(item);
   return (
     <span className={`grid place-items-center overflow-hidden rounded-card bg-white/90 text-ink ${className}`}>
-      {item.imageUrl ? (
-        <img src={item.imageUrl} alt="" className="size-full object-contain p-1" />
-      ) : (
-        <Icon className="size-1/2" strokeWidth={1.55} aria-hidden="true" />
-      )}
+      <Icon className="size-1/2" strokeWidth={1.55} aria-hidden="true" />
     </span>
   );
 }

@@ -40,7 +40,6 @@ type Draft = {
   key: string;
   productId: string | null;
   name: string;
-  imageUrl: string | null;
   grade: HealthGrade | null;
   qty: number;
   unit: string;
@@ -78,7 +77,6 @@ function merge(drafts: Map<string, Draft>, draft: Draft): void {
   current.inCart = current.inCart || draft.inCart;
   current.grade = current.grade ?? draft.grade;
   current.store = current.store ?? draft.store;
-  current.imageUrl = current.imageUrl ?? draft.imageUrl;
 
   const newer =
     draft.boughtAtMs !== null && (current.boughtAtMs === null || draft.boughtAtMs > current.boughtAtMs);
@@ -93,7 +91,6 @@ function toItem(draft: Draft, macros: Map<string, Macros>): PantryItem {
     key: draft.key,
     productId: draft.productId,
     name: draft.name,
-    imageUrl: draft.imageUrl,
     grade: draft.grade,
     qty: draft.qty,
     unit: draft.unit,
@@ -167,7 +164,6 @@ export async function loadPantry(householdId: string): Promise<PantryLoad> {
         key: productId ?? `t:${item.title.trim().toLowerCase()}`,
         productId,
         name: item.title,
-        imageUrl: product?.image_url ?? null,
         grade: product?.health_grade ?? null,
         qty: item.qty,
         unit: item.unit,
@@ -187,7 +183,6 @@ export async function loadPantry(householdId: string): Promise<PantryLoad> {
         key: row.product_id ?? `t:${row.title.trim().toLowerCase()}`,
         productId: row.product_id,
         name: row.title,
-        imageUrl: product?.image_url ?? null,
         grade: row.health_grade ?? product?.health_grade ?? null,
         qty: row.qty,
         unit: row.unit,
