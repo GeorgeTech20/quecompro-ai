@@ -70,6 +70,22 @@ export async function getProfileByClerkId(clerkId: string): Promise<ProfileRow |
 }
 
 /**
+ * Perfil por su uuid. Hace falta cuando la acción es *sobre otra persona* y no
+ * sobre quien tiene la sesión: sacar a un roomie tiene que saber si la casa de
+ * la que sale era su casa activa, y ahí no hay `clerk_id` a mano.
+ */
+export async function getProfileById(profileId: string): Promise<ProfileRow | null> {
+  const columns = await profileColumns();
+  const result = await supabaseAdmin()
+    .from("profiles")
+    .select(columns)
+    .eq("id", profileId)
+    .maybeSingle();
+
+  return normalizeProfile(unwrap<ProfileRow | null>(result, "getProfileById"));
+}
+
+/**
  * Crea o actualiza el perfil a partir de lo que dice Clerk. Es lo primero que
  * corre después del login: `clerk_id` es la clave natural.
  */

@@ -226,13 +226,32 @@ button:disabled.qc-tactile-danger {
 
 .qc-shopping-paper {
   position: relative;
+
+  /* El papel es una superficie propia, no la del tema: por eso trae sus
+     propios tokens. Sin esto, en oscuro quedaba tinta clara sobre crema —
+     ilegible. */
+  --qc-paper-rule: rgb(152 222 239 / 0.28);
+  --qc-paper-margin: rgb(233 52 43 / 0.22);
+  --qc-paper-edge: rgb(233 52 43 / 0.2);
+
   background-color: #fffdf5;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
     transparent 47px,
-    rgb(152 222 239 / 0.28) 48px
+    var(--qc-paper-rule) 48px
   );
+}
+
+/* En oscuro el papel también se apaga. Una hoja crema encendida a media noche
+   deslumbra, y la tinta del tema es clara: hay que mover la hoja, no la
+   tinta. */
+.dark .qc-shopping-paper {
+  --qc-paper-rule: rgb(152 222 239 / 0.1);
+  --qc-paper-margin: rgb(233 52 43 / 0.42);
+  --qc-paper-edge: rgb(152 222 239 / 0.16);
+
+  background-color: #131e25;
 }
 
 .qc-shopping-paper::before {
@@ -241,7 +260,7 @@ button:disabled.qc-tactile-danger {
   inset-block: 0;
   left: 1.1rem;
   width: 1px;
-  background: rgb(233 52 43 / 0.22);
+  background: var(--qc-paper-margin);
   pointer-events: none;
 }
 
@@ -252,5 +271,43 @@ button:disabled.qc-tactile-danger {
 @media (min-width: 640px) {
   .qc-shopping-paper::before {
     left: 1.6rem;
+  }
+}
+
+/* --- Nota de hoy ----------------------------------------------------------
+   Sin renglones. Un producto con nota ocupa dos líneas y otro una, así que el
+   rayado nunca coincidiría con el texto: quedan rayas cruzando las palabras.
+   Se queda el papel y el margen rojo, que son los que hacen la hoja, y el
+   separador real de cada línea es el borde de la fila.                      */
+.qc-note-sheet {
+  background-image: none;
+}
+
+.qc-note-sheet::before {
+  left: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .qc-note-sheet::before {
+    left: 2.2rem;
+  }
+}
+
+/* Imprimir la nota: se lleva doblada al mercado, así que solo va la hoja.
+   Sin cabecera, sin barra de acciones y sin la app de fondo.               */
+@media print {
+  .qc-note-hide-print {
+    display: none !important;
+  }
+
+  .qc-note-sheet {
+    border: 0;
+    box-shadow: none;
+    background-color: #fff;
+    background-image: none;
+  }
+
+  .qc-note-sheet::before {
+    display: none;
   }
 }

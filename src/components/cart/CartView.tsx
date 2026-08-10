@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBasket } from "@tabler/icons-react";
+import { IconBasket, IconNote } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { useHousehold } from "@/components/providers/realtime-provider";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
@@ -17,6 +17,7 @@ import { CartTotal, projectMonthEnd, type BudgetSnapshot } from "./CartTotal";
 import { ConnectionBadge } from "./ConnectionBadge";
 import { PresenceBar } from "./PresenceBar";
 import { PurchaseRunSheet } from "./PurchaseRunSheet";
+import { TodayNoteSheet } from "./TodayNoteSheet";
 
 /**
  * La pantalla del carrito compartido.
@@ -48,6 +49,9 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
   // "Modo compra": hoja a pantalla completa para el supermercado. El check ahí
   // es compra compartida con evidencia opcional.
   const [runOpen, setRunOpen] = useState(false);
+  // "Nota de hoy": la misma lista pero de solo lectura, para mandarla o
+  // imprimirla. Sale de la app; por eso no comparte pantalla con la otra.
+  const [noteOpen, setNoteOpen] = useState(false);
 
   const checkedCount = cart.items.filter((item) => item.purchasedAt).length;
 
@@ -101,6 +105,16 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
               onTyping={presence.sendTyping}
             />
           </div>
+          <Button
+            variant="secondary"
+            size="md"
+            className="shrink-0 max-sm:px-3"
+            iconLeft={<IconNote className="size-4" />}
+            onClick={() => setNoteOpen(true)}
+            aria-label="Ver la nota de hoy a pantalla completa"
+          >
+            <span className="max-sm:hidden">Nota de hoy</span>
+          </Button>
           <Button
             variant="primary"
             size="md"
@@ -179,6 +193,15 @@ export function CartView({ householdName, seedItems, budget }: CartViewProps) {
           ) : null}
         </aside>
       </div>
+
+      {noteOpen ? (
+        <TodayNoteSheet
+          householdName={householdName}
+          items={cart.items}
+          total={cart.total}
+          onClose={() => setNoteOpen(false)}
+        />
+      ) : null}
 
       {runOpen ? (
         <PurchaseRunSheet

@@ -1,6 +1,8 @@
 "use client";
 
+import { IconLogout, IconUserMinus } from "@tabler/icons-react";
 import { useChannel } from "@portalsdk/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { CopyIcon, UsersIcon, WhatsappIcon } from "@/components/shell/icons";
@@ -21,7 +23,7 @@ import {
 } from "@/components/ui";
 import { channels, type CartEvent } from "@/lib/realtime/channels";
 
-import { ensureInviteLink } from "./actions";
+import { ensureInviteLink, leaveCurrentHousehold, removeRoomie } from "./actions";
 
 export type RoomieView = {
   /** Id del perfil (uuid). */
@@ -72,6 +74,48 @@ export function RoomiesList({
       : null;
   const onlineCount = presence?.count ?? 0;
 
+  const router = useRouter();
+  const { toast } = useToast();
+  const [toRemove, setToRemove] = useState<RoomieView | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const you = members.find((member) => member.clerkId === currentClerkId);
+  const youAreOwner = you?.role === "owner";
+  const others = members.filter((member) => member.clerkId !== currentClerkId);
+
+  // Quien creó la casa no puede irse mientras quede gente: se quedaría sin
+  // dueño. El servidor lo vuelve a comprobar; esto solo evita ofrecerlo.
+  const canLeave = Boolean(you) && (!youAreOwner || others.length === 0);
+
+  function confirmRemove(member: RoomieView) {
+    startTransition(async () => {
+      const result = await removeRoomie(member.id);
+      if (result.ok) {
+        setToRemove(null);
+        toast({ title: `${member.name} ya no está en la casa`, tone: "success" });
+        router.refresh();
+      } else {
+        toast({ title: "No se pudo sacar", description: result.error, tone: "critical" });
+      }
+    });
+  }
+
+  function confirmLeave() {
+    startTransition(async () => {
+      const result = await leaveCurrentHousehold();
+      if (result.ok) {
+        setLeaveOpen(false);
+        // A `/app` a propósito y no a esta pantalla: la casa de la que acabas
+        // de salir ya no se puede leer.
+        router.replace("/app");
+        router.refresh();
+      } else {
+        toast({ title: "No se pudo salir", description: result.error, tone: "critical" });
+      }
+    });
+  }
+
   return (
     <>
       <Card>
@@ -102,10 +146,14 @@ export function RoomiesList({
                 const online = onlineIds ? Boolean(member.clerkId && onlineIds.has(member.clerkId)) : false;
                 const isYou = member.clerkId === currentClerkId;
 
+                // Sacar a alguien solo lo puede quien creó la casa, nunca a
+                // otro dueño y nunca a sí mismo — para eso está "salir".
+                const removable = youAreOwner && !isYou && member.role !== "owner";
+
                 return (
                   <li
                     key={member.id}
-                    className="group flex items-center gap-3 px-5 py-3.5 transition-colors duration-150 hover:bg-surface-sunken/40"
+                    className="group flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3.5 transition-colors duration-150 hover:bg-surface-sunken/40 sm:flex-nowrap sm:px-5"
                   >
                     <Avatar
                       size="md"
@@ -126,16 +174,34 @@ export function RoomiesList({
                       </p>
                     </div>
 
-                    {member.whatsapp ? (
-                      <WhatsappIcon
-                        className="size-4 shrink-0 text-brand-600"
-                        title="WhatsApp vinculado"
-                      />
-                    ) : null}
+                    <div className="ml-auto flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-end">
+                      {member.whatsapp ? (
+                        <WhatsappIcon
+                          className="size-4 shrink-0 text-brand-600"
+                          title="WhatsApp vinculado"
+                        />
+                      ) : null}
 
-                    <Badge tone={member.role === "owner" ? "brand" : "neutral"} size="sm">
-                      {member.role === "owner" ? "Dueña/o" : "Roomie"}
-                    </Badge>
+                      <Badge tone={member.role === "owner" ? "brand" : "neutral"} size="sm">
+                        {member.role === "owner" ? "Dueña/o" : "Roomie"}
+                      </Badge>
+
+                      {removable ? (
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          onClick={() => setToRemove(member)}
+                          iconLeft={<IconUserMinus className="size-4" />}
+                          aria-label={`Sacar a ${member.name} de la casa`}
+                          // En un dedo no hay hover, así que en celular el
+                          // botón está siempre visible; en escritorio aparece
+                          // al acercarse para no ensuciar la lista.
+                          className="text-ink-faint hover:text-danger sm:opacity-0 sm:transition-opacity sm:duration-150 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+                        >
+                          <span className="sr-only sm:not-sr-only">Sacar</span>
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}
@@ -145,6 +211,76 @@ export function RoomiesList({
       </Card>
 
       <InviteCard householdName={householdName} initialToken={initialToken} />
+
+      <Card padding="md" className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">Salir de {householdName}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            {canLeave
+              ? "Dejas de ver el carrito y el historial de esta casa. Lo ya comprado se queda con la casa."
+              : "Creaste esta casa. Saca primero a los demás y después puedes salir."}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={!canLeave || pending}
+          onClick={() => setLeaveOpen(true)}
+          iconLeft={<IconLogout className="size-4" />}
+          className="w-full sm:w-auto"
+        >
+          Salir de la casa
+        </Button>
+      </Card>
+
+      <Modal
+        open={toRemove !== null}
+        onClose={() => (pending ? undefined : setToRemove(null))}
+        size="sm"
+        title={toRemove ? `¿Sacar a ${toRemove.name}?` : ""}
+        description="Deja de ver el carrito y el historial de la casa al instante. Puedes volver a invitarla con el enlace cuando quieras."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setToRemove(null)} disabled={pending}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => toRemove && confirmRemove(toRemove)}
+              disabled={pending}
+            >
+              {pending ? "Sacando…" : "Sacar de la casa"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-muted">
+          Lo que {toRemove?.name ?? "esa persona"} agregó o compró se queda en el historial: es de
+          la casa, no de quien lo cargó.
+        </p>
+      </Modal>
+
+      <Modal
+        open={leaveOpen}
+        onClose={() => (pending ? undefined : setLeaveOpen(false))}
+        size="sm"
+        title={`¿Salir de ${householdName}?`}
+        description="Pierdes el acceso al carrito compartido y al historial de esta casa."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setLeaveOpen(false)} disabled={pending}>
+              Quedarme
+            </Button>
+            <Button variant="danger" onClick={confirmLeave} disabled={pending}>
+              {pending ? "Saliendo…" : "Salir de la casa"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-muted">
+          Para volver a entrar necesitas que alguien de adentro te pase el enlace de invitación.
+        </p>
+      </Modal>
     </>
   );
 }
